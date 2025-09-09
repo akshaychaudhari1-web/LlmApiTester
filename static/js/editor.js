@@ -104,15 +104,32 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Chat functionality
-    document.getElementById('sendChatBtn').addEventListener('click', sendChatMessage);
-    document.getElementById('clearChatBtn').addEventListener('click', clearChat);
+    const sendChatBtn = document.getElementById('sendChatBtn');
+    const clearChatBtn = document.getElementById('clearChatBtn');
+    const chatInput = document.getElementById('chatInput');
+    
+    if (sendChatBtn) {
+        sendChatBtn.addEventListener('click', sendChatMessage);
+    } else {
+        console.error('Send chat button not found');
+    }
+    
+    if (clearChatBtn) {
+        clearChatBtn.addEventListener('click', clearChat);
+    } else {
+        console.error('Clear chat button not found');
+    }
     
     // Enter key in chat input
-    document.getElementById('chatInput').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            sendChatMessage();
-        }
-    });
+    if (chatInput) {
+        chatInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendChatMessage();
+            }
+        });
+    } else {
+        console.error('Chat input not found');
+    }
 });
 
 // Load session data
@@ -196,17 +213,22 @@ async function runCode() {
 
 // Test OpenRouter API
 async function testOpenRouterAPI() {
-    const prompt = document.getElementById('promptInput').value;
+    const chatInput = document.getElementById('chatInput');
+    if (!chatInput) {
+        console.error('Chat input element not found');
+        return;
+    }
+    
+    const prompt = chatInput.value;
     const button = document.getElementById('testApiBtn');
-    const responseDiv = document.getElementById('apiResponse');
     
     if (!currentApiKey) {
-        responseDiv.innerHTML = '<span class="text-danger">Error: Please set your OpenRouter API key in Settings</span>';
+        addChatMessage('error', 'Please set your OpenRouter API key in Settings first');
         return;
     }
     
     if (!prompt.trim()) {
-        responseDiv.innerHTML = '<span class="text-danger">Error: Please enter a prompt</span>';
+        addChatMessage('error', 'Please enter a prompt to test the API');
         return;
     }
     
@@ -218,7 +240,9 @@ async function testOpenRouterAPI() {
         feather.replace();
     }
     
-    responseDiv.innerHTML = '<em class="text-muted">Calling OpenRouter API...</em>';
+    // Add test message to chat
+    addChatMessage('user', `[API TEST] ${prompt}`);
+    const thinkingId = addChatMessage('assistant', 'Testing API connection...', true);
     
     try {
         const response = await fetch('/test_openrouter', {
@@ -235,21 +259,25 @@ async function testOpenRouterAPI() {
         
         const result = await response.json();
         
+        // Remove thinking indicator
+        const thinkingElement = document.getElementById(thinkingId);
+        if (thinkingElement) {
+            thinkingElement.remove();
+        }
+        
         if (result.success) {
-            const formattedResponse = `Model: ${result.model}
-
-Response:
-${result.response.content}
-
-Usage:
-${JSON.stringify(result.response.usage, null, 2)}`;
-            
-            responseDiv.textContent = formattedResponse;
+            addChatMessage('assistant', result.response.content);
+            addChatMessage('system', `✓ API Test Successful • Model: ${result.model} • Usage: ${JSON.stringify(result.response.usage)}`);
         } else {
-            responseDiv.innerHTML = `<span class="text-danger">Error: ${result.error}</span>`;
+            addChatMessage('error', `API Test Failed: ${result.error}`);
         }
     } catch (error) {
-        responseDiv.innerHTML = `<span class="text-danger">Network error: ${error.message}</span>`;
+        // Remove thinking indicator
+        const thinkingElement = document.getElementById(thinkingId);
+        if (thinkingElement) {
+            thinkingElement.remove();
+        }
+        addChatMessage('error', `Network error: ${error.message}`);
     } finally {
         // Reset button state
         button.classList.remove('loading');

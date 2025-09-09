@@ -234,7 +234,7 @@
     </div>
 
     <!-- Custom JS -->
-    <script src="{{ url_for('static', filename='js/editor.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/editor.js') }}?v={{ range(1, 10000) | random }}"></script>
     
     <script>
         // Initialize Feather icons after page loads
