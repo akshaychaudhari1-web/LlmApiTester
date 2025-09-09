@@ -87,21 +87,30 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('confirmSaveSnippetBtn').addEventListener('click', saveSnippet);
     
     // Load snippets when modal is opened
-    document.getElementById('snippetsModal').addEventListener('show.bs.modal', loadSnippets);
+    const snippetsModal = document.getElementById('snippetsModal');
+    if (snippetsModal) {
+        snippetsModal.addEventListener('show.bs.modal', loadSnippets);
+    }
     
-    // Enter key in prompt input
-    document.getElementById('promptInput').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            testOpenRouterAPI();
-        }
-    });
+    // Enter key in prompt input (legacy - now using chat input)
+    const promptInput = document.getElementById('promptInput');
+    if (promptInput) {
+        promptInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                testOpenRouterAPI();
+            }
+        });
+    }
     
     // Enter key in snippet name input
-    document.getElementById('snippetNameInput').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            saveSnippet();
-        }
-    });
+    const snippetNameInput = document.getElementById('snippetNameInput');
+    if (snippetNameInput) {
+        snippetNameInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                saveSnippet();
+            }
+        });
+    }
     
     // Chat functionality
     const sendChatBtn = document.getElementById('sendChatBtn');
