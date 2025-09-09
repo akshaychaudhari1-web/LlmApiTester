@@ -73,12 +73,12 @@
                 </div>
             </div>
 
-            <!-- Right Panel - Output and API -->
+            <!-- Right Panel - Output and Chat -->
             <div class="col-lg-6">
                 <div class="row g-3 h-100">
                     <!-- Console Output -->
                     <div class="col-12">
-                        <div class="card h-100">
+                        <div class="card">
                             <div class="card-header d-flex justify-content-between align-items-center">
                                 <h6 class="mb-0">
                                     <i data-feather="terminal" class="me-2"></i>
@@ -90,34 +90,50 @@
                                 </button>
                             </div>
                             <div class="card-body">
-                                <pre id="consoleOutput" class="bg-dark text-light p-3 rounded h-100 overflow-auto"></pre>
+                                <pre id="consoleOutput" class="bg-dark text-light p-3 rounded overflow-auto" style="max-height: 250px;"></pre>
                             </div>
                         </div>
                     </div>
 
-                    <!-- OpenRouter API Test -->
+                    <!-- Automotive Chat Assistant -->
                     <div class="col-12">
                         <div class="card h-100">
-                            <div class="card-header">
+                            <div class="card-header d-flex justify-content-between align-items-center">
                                 <h6 class="mb-0">
-                                    <i data-feather="cloud" class="me-2"></i>
-                                    OpenRouter API Test
+                                    <i data-feather="message-circle" class="me-2"></i>
+                                    Automotive Chat Assistant
                                 </h6>
+                                <div class="btn-group btn-group-sm">
+                                    <button id="clearChatBtn" class="btn btn-outline-secondary" type="button">
+                                        <i data-feather="trash-2" class="me-1"></i>
+                                        Clear
+                                    </button>
+                                    <button id="testApiBtn" class="btn btn-outline-info" type="button">
+                                        <i data-feather="cloud" class="me-1"></i>
+                                        API Test
+                                    </button>
+                                </div>
                             </div>
-                            <div class="card-body">
-                                <div class="row g-2 mb-3">
-                                    <div class="col-md-8">
-                                        <input type="text" id="promptInput" class="form-control" placeholder="Enter your prompt here..." value="Hello! Can you help me write Python code?">
-                                    </div>
-                                    <div class="col-md-4">
-                                        <button id="testApiBtn" class="btn btn-primary w-100" type="button">
-                                            <i data-feather="send" class="me-1"></i>
-                                            Test API
-                                        </button>
+                            <div class="card-body d-flex flex-column p-0">
+                                <!-- Chat Messages -->
+                                <div id="chatMessages" class="flex-grow-1 overflow-auto p-3" style="min-height: 300px; max-height: 400px;">
+                                    <div class="text-muted text-center py-4">
+                                        <i data-feather="car" class="me-2"></i>
+                                        Ask me anything about automobiles, cars, or automotive technology!
+                                        <br><small>Topics are filtered to automotive discussions only.</small>
                                     </div>
                                 </div>
-                                <div id="apiResponse" class="bg-dark text-light p-3 rounded overflow-auto" style="min-height: 200px;">
-                                    <em class="text-muted">API response will appear here...</em>
+                                
+                                <!-- Chat Input -->
+                                <div class="border-top p-3">
+                                    <div class="input-group">
+                                        <input type="text" id="chatInput" class="form-control" placeholder="Ask about cars, engines, automotive tech..." maxlength="500">
+                                        <button id="sendChatBtn" class="btn btn-primary" type="button">
+                                            <i data-feather="send" class="me-1"></i>
+                                            Send
+                                        </button>
+                                    </div>
+                                    <small class="text-muted">Powered by OpenRouter • Automobile topics only</small>
                                 </div>
                             </div>
                         </div>

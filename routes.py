@@ -5,6 +5,7 @@ from app import app, db
 from models import CodeSnippet
 from code_executor import execute_python_code
 from openrouter_client import OpenRouterClient
+import re
 
 @app.route('/')
 def index():
@@ -145,3 +146,97 @@ def clear_session():
     """Clear all session data"""
     session.clear()
     return jsonify({'success': True, 'message': 'Session data cleared'})
+
+# Automotive topic keywords for filtering
+AUTOMOTIVE_KEYWORDS = [
+    'car', 'cars', 'vehicle', 'vehicles', 'auto', 'automobile', 'automotive',
+    'engine', 'motor', 'transmission', 'brake', 'brakes', 'tire', 'tires',
+    'wheel', 'wheels', 'suspension', 'chassis', 'frame', 'body', 'paint',
+    'fuel', 'gasoline', 'diesel', 'electric', 'hybrid', 'battery', 'charging',
+    'horsepower', 'torque', 'performance', 'speed', 'acceleration', 'handling',
+    'safety', 'airbag', 'seatbelt', 'crash', 'collision', 'insurance',
+    'maintenance', 'repair', 'service', 'oil', 'filter', 'spark', 'plug',
+    'toyota', 'honda', 'ford', 'gm', 'chevrolet', 'nissan', 'bmw', 'mercedes',
+    'audi', 'volkswagen', 'porsche', 'ferrari', 'lamborghini', 'tesla',
+    'suv', 'sedan', 'coupe', 'hatchback', 'truck', 'pickup', 'van', 'minivan',
+    'roadster', 'convertible', 'wagon', 'crossover', 'sports car', 'luxury',
+    'racing', 'formula', 'nascar', 'drift', 'track', 'circuit', 'rally'
+]
+
+def is_automotive_related(text):
+    """Check if the text is related to automotive topics"""
+    text_lower = text.lower()
+    # Check for automotive keywords
+    for keyword in AUTOMOTIVE_KEYWORDS:
+        if keyword in text_lower:
+            return True
+    return False
+
+@app.route('/chat', methods=['POST'])
+def chat():
+    """Handle automotive chat messages"""
+    try:
+        data = request.get_json()
+        message = data.get('message', '').strip()
+        
+        if not message:
+            return jsonify({'success': False, 'error': 'Message is required'})
+        
+        # Check if user has API key configured
+        api_key = session.get('openrouter_api_key')
+        if not api_key:
+            return jsonify({
+                'success': False, 
+                'error': 'Please configure your OpenRouter API key in Settings first'
+            })
+        
+        # Content filtering - check if message is automotive related
+        if not is_automotive_related(message):
+            return jsonify({
+                'success': True,
+                'response': {
+                    'content': "I'm sorry, but I can only discuss automotive topics like cars, engines, vehicle maintenance, auto manufacturers, and automotive technology. Please ask me something related to automobiles!",
+                    'filtered': True
+                }
+            })
+        
+        # Get model from session
+        model = session.get('openrouter_model', 'deepseek/deepseek-coder')
+        
+        # Create automotive-focused system prompt
+        automotive_prompt = f"""You are an automotive expert assistant. You should only discuss topics related to:
+- Cars, trucks, motorcycles, and other vehicles
+- Automotive technology and engineering
+- Vehicle maintenance and repair
+- Auto manufacturers and brands
+- Automotive history and racing
+- Electric vehicles and alternative fuels
+- Vehicle safety and regulations
+
+User question: {message}
+
+Provide a helpful, accurate response focused on automotive topics."""
+        
+        # Call OpenRouter API
+        client = OpenRouterClient(api_key)
+        response = client.chat_completion(model, automotive_prompt)
+        
+        return jsonify({
+            'success': True,
+            'response': {
+                'content': response['content'],
+                'model': response.get('model', model),
+                'filtered': False
+            }
+        })
+    
+    except Exception as e:
+        logging.error(f"Chat error: {str(e)}")
+        return jsonify({'success': False, 'error': f'Chat failed: {str(e)}'})
+
+@app.route('/clear_chat', methods=['POST'])
+def clear_chat():
+    """Clear chat history from session"""
+    if 'chat_history' in session:
+        del session['chat_history']
+    return jsonify({'success': True, 'message': 'Chat history cleared'})
