@@ -74,8 +74,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Clear Output Button
     document.getElementById('clearOutputBtn').addEventListener('click', clearOutput);
     
-    // Test API Button
-    document.getElementById('testApiBtn').addEventListener('click', testOpenRouterAPI);
+    // Test API Button (now in chat section)
+    const testApiBtn = document.getElementById('testApiBtn');
+    if (testApiBtn) {
+        testApiBtn.addEventListener('click', testOpenRouterAPI);
+    }
     
     // Save Settings Button
     document.getElementById('saveSettingsBtn').addEventListener('click', saveSettings);
