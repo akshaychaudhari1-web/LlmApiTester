@@ -133,7 +133,9 @@ async function runCode() {
     button.classList.add('loading');
     button.disabled = true;
     button.innerHTML = '<i data-feather="loader" class="me-1"></i>Running...';
-    feather.replace();
+    if (typeof feather !== 'undefined') {
+        feather.replace();
+    }
     
     output.textContent = 'Executing code...\n';
     
@@ -172,7 +174,9 @@ async function runCode() {
         button.classList.remove('loading');
         button.disabled = false;
         button.innerHTML = '<i data-feather="play" class="me-1"></i>Run Code';
-        feather.replace();
+        if (typeof feather !== 'undefined') {
+            feather.replace();
+        }
     }
 }
 
@@ -196,7 +200,9 @@ async function testOpenRouterAPI() {
     button.classList.add('loading');
     button.disabled = true;
     button.innerHTML = '<i data-feather="loader" class="me-1"></i>Calling API...';
-    feather.replace();
+    if (typeof feather !== 'undefined') {
+        feather.replace();
+    }
     
     responseDiv.innerHTML = '<em class="text-muted">Calling OpenRouter API...</em>';
     
@@ -235,7 +241,9 @@ ${JSON.stringify(result.response.usage, null, 2)}`;
         button.classList.remove('loading');
         button.disabled = false;
         button.innerHTML = '<i data-feather="send" class="me-1"></i>Test API';
-        feather.replace();
+        if (typeof feather !== 'undefined') {
+            feather.replace();
+        }
     }
 }
 
@@ -245,8 +253,10 @@ function saveSettings() {
     currentModel = document.getElementById('modelSelect').value;
     
     // Close modal
-    const modal = bootstrap.Modal.getInstance(document.getElementById('settingsModal'));
-    modal.hide();
+    if (typeof bootstrap !== 'undefined') {
+        const modal = bootstrap.Modal.getInstance(document.getElementById('settingsModal'));
+        if (modal) modal.hide();
+    }
     
     // Show success message (you could add a toast here)
     console.log('Settings saved');
@@ -273,8 +283,10 @@ function showSaveSnippetModal() {
     }
     
     document.getElementById('snippetNameInput').value = '';
-    const modal = new bootstrap.Modal(document.getElementById('saveSnippetModal'));
-    modal.show();
+    if (typeof bootstrap !== 'undefined') {
+        const modal = new bootstrap.Modal(document.getElementById('saveSnippetModal'));
+        modal.show();
+    }
 }
 
 // Save snippet
@@ -308,8 +320,10 @@ async function saveSnippet() {
         
         if (result.success) {
             // Close modal
-            const modal = bootstrap.Modal.getInstance(document.getElementById('saveSnippetModal'));
-            modal.hide();
+            if (typeof bootstrap !== 'undefined') {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('saveSnippetModal'));
+                if (modal) modal.hide();
+            }
             
             alert('Snippet saved successfully!');
         } else {
@@ -360,7 +374,9 @@ async function loadSnippets() {
                 snippetsList.appendChild(snippetItem);
             });
             
-            feather.replace();
+            if (typeof feather !== 'undefined') {
+                feather.replace();
+            }
         } else {
             snippetsList.innerHTML = `<div class="text-center text-danger">Error: ${result.error}</div>`;
         }
@@ -379,8 +395,10 @@ async function loadSnippet(snippetId) {
             editor.setValue(result.snippet.code);
             
             // Close modal
-            const modal = bootstrap.Modal.getInstance(document.getElementById('snippetsModal'));
-            modal.hide();
+            if (typeof bootstrap !== 'undefined') {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('snippetsModal'));
+                if (modal) modal.hide();
+            }
         } else {
             alert(`Error loading snippet: ${result.error}`);
         }

@@ -12,7 +12,7 @@
     <script src="https://unpkg.com/monaco-editor@0.44.0/min/vs/loader.js"></script>
     
     <!-- Feather Icons -->
-    <script src="https://unpkg.com/feather-icons"></script>
+    <script src="https://unpkg.com/feather-icons@4.29.0/dist/feather.min.js"></script>
     
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
@@ -218,8 +218,12 @@
     <script src="{{ url_for('static', filename='js/editor.js') }}"></script>
     
     <script>
-        // Initialize Feather icons
-        feather.replace();
+        // Initialize Feather icons after page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof feather !== 'undefined') {
+                feather.replace();
+            }
+        });
     </script>
 </body>
 </html>
