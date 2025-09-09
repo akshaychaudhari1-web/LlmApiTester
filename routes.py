@@ -203,23 +203,9 @@ def chat():
         # Get model from session
         model = session.get('openrouter_model', 'deepseek/deepseek-coder')
         
-        # Create automotive-focused system prompt
-        automotive_prompt = f"""You are an automotive expert assistant. You should only discuss topics related to:
-- Cars, trucks, motorcycles, and other vehicles
-- Automotive technology and engineering
-- Vehicle maintenance and repair
-- Auto manufacturers and brands
-- Automotive history and racing
-- Electric vehicles and alternative fuels
-- Vehicle safety and regulations
-
-User question: {message}
-
-Provide a helpful, accurate response focused on automotive topics."""
-        
-        # Call OpenRouter API
+        # Call OpenRouter API directly with user's message
         client = OpenRouterClient(api_key)
-        response = client.chat_completion(model, automotive_prompt)
+        response = client.chat_completion(model, message)
         
         return jsonify({
             'success': True,
