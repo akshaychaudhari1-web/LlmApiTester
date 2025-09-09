@@ -75,7 +75,9 @@ def save_snippet():
         if not name or not code:
             return jsonify({'success': False, 'error': 'Name and code are required'})
         
-        snippet = CodeSnippet(name=name, code=code)
+        snippet = CodeSnippet()
+        snippet.name = name
+        snippet.code = code
         db.session.add(snippet)
         db.session.commit()
         
@@ -137,3 +139,9 @@ def get_session_data():
         'api_key': session.get('openrouter_api_key', ''),
         'model': session.get('openrouter_model', 'openai/gpt-3.5-turbo')
     })
+
+@app.route('/clear_session', methods=['POST'])
+def clear_session():
+    """Clear all session data"""
+    session.clear()
+    return jsonify({'success': True, 'message': 'Session data cleared'})
