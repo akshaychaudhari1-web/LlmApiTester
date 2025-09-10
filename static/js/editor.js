@@ -299,18 +299,39 @@ async function testOpenRouterAPI() {
 }
 
 // Save settings
-function saveSettings() {
+async function saveSettings() {
     currentApiKey = document.getElementById('apiKeyInput').value;
     currentModel = document.getElementById('modelSelect').value;
     
-    // Close modal
-    if (typeof bootstrap !== 'undefined') {
-        const modal = bootstrap.Modal.getInstance(document.getElementById('settingsModal'));
-        if (modal) modal.hide();
+    try {
+        // Save to backend session
+        const response = await fetch('/save_session_data', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                api_key: currentApiKey,
+                model: currentModel
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // Close modal
+            if (typeof bootstrap !== 'undefined') {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('settingsModal'));
+                if (modal) modal.hide();
+            }
+            
+            console.log('Settings saved');
+        } else {
+            alert(`Error saving settings: ${result.error}`);
+        }
+    } catch (error) {
+        alert(`Network error: ${error.message}`);
     }
-    
-    // Show success message (you could add a toast here)
-    console.log('Settings saved');
 }
 
 // Clear code editor
