@@ -132,6 +132,46 @@ html, body {
     border-radius: 0 0.375rem 0.375rem 0;
 }
 
+/* Rich text formatting in chat messages */
+.message .bg-dark p {
+    margin-bottom: 0.75rem;
+    line-height: 1.5;
+}
+
+.message .bg-dark p:last-child {
+    margin-bottom: 0;
+}
+
+.message .bg-dark ul,
+.message .bg-dark ol {
+    margin: 0.5rem 0;
+    padding-left: 1.5rem;
+}
+
+.message .bg-dark li {
+    margin-bottom: 0.25rem;
+    line-height: 1.4;
+}
+
+.message .bg-dark strong {
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.message .bg-dark em {
+    font-style: italic;
+    color: #e9ecef;
+}
+
+.message .bg-dark code {
+    background-color: #495057;
+    color: #f8f9fa;
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.25rem;
+    font-family: 'Courier New', monospace;
+    font-size: 0.875rem;
+}
+
 /* Typing indicator animation */
 .typing-indicator {
     display: flex;

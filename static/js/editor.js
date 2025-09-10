@@ -217,6 +217,44 @@ async function sendChatMessage() {
     }
 }
 
+// Format text content for rich display
+function formatTextContent(text) {
+    if (!text) return text;
+    
+    // Escape HTML to prevent XSS, but we'll selectively allow some formatting
+    let formattedText = text
+        // Convert line breaks to HTML
+        .replace(/\n\n/g, '</p><p>')
+        .replace(/\n/g, '<br>')
+        
+        // Convert bullet points (various formats)
+        .replace(/^[\s]*[-•*]\s+(.+)$/gm, '<li>$1</li>')
+        .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
+        
+        // Convert numbered lists
+        .replace(/^[\s]*(\d+\.)\s+(.+)$/gm, '<li value="$1">$2</li>')
+        
+        // Convert **bold** text
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        
+        // Convert *italic* text
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        
+        // Convert `code` text
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        
+        // Wrap in paragraph if it doesn't start with a tag
+        .replace(/^(?!<[uo]l|<li|<p|<div)(.+)/gm, '<p>$1</p>')
+        
+        // Clean up nested paragraphs in lists
+        .replace(/<li><p>(.*?)<\/p><\/li>/g, '<li>$1</li>')
+        
+        // Fix multiple consecutive <br> tags
+        .replace(/(<br\s*\/?>\s*){3,}/g, '<br><br>');
+    
+    return formattedText;
+}
+
 // Add message to chat
 function addChatMessage(type, content, isThinking = false) {
     const chatMessages = document.getElementById('chatMessages');
@@ -253,6 +291,11 @@ function addChatMessage(type, content, isThinking = false) {
     
     const thinkingClass = isThinking ? ' thinking' : '';
     
+    // Format content for rich text display (only for assistant messages)
+    const displayContent = isThinking ? 
+        '<div class="typing-indicator"><span></span><span></span><span></span></div>' : 
+        (type === 'assistant' ? formatTextContent(content) : content);
+    
     messageDiv.innerHTML = `
         <div class="d-flex align-items-start">
             <div class="flex-shrink-0 me-2">
@@ -262,7 +305,7 @@ function addChatMessage(type, content, isThinking = false) {
             </div>
             <div class="flex-grow-1">
                 <div class="bg-dark p-3 rounded${thinkingClass}" style="word-wrap: break-word;">
-                    ${isThinking ? '<div class="typing-indicator"><span></span><span></span><span></span></div>' : content}
+                    ${displayContent}
                 </div>
                 <small class="text-muted">${new Date().toLocaleTimeString()}</small>
             </div>
