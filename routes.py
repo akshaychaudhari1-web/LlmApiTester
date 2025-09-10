@@ -138,7 +138,7 @@ def get_session_data():
     """Get stored session data"""
     return jsonify({
         'api_key': session.get('openrouter_api_key', ''),
-        'model': session.get('openrouter_model', 'openai/gpt-3.5-turbo')
+        'model': session.get('openrouter_model', 'deepseek/deepseek-chat-v3-0324:free')
     })
 
 @app.route('/clear_session', methods=['POST'])
@@ -201,7 +201,7 @@ def chat():
             })
         
         # Get model from session
-        model = session.get('openrouter_model', 'deepseek/deepseek-coder')
+        model = session.get('openrouter_model', 'deepseek/deepseek-chat-v3-0324:free')
         
         # Call OpenRouter API directly with user's message
         client = OpenRouterClient(api_key)

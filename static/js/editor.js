@@ -148,7 +148,7 @@ async function loadSessionData() {
         const data = await response.json();
         
         currentApiKey = data.api_key || '';
-        currentModel = data.model || 'openai/gpt-3.5-turbo';
+        currentModel = data.model || 'deepseek/deepseek-chat-v3-0324:free';
         
         // Update UI
         document.getElementById('apiKeyInput').value = currentApiKey;
