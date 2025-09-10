@@ -60,6 +60,7 @@ def clear_session():
 
 # Automotive topic keywords for filtering
 AUTOMOTIVE_KEYWORDS = [
+    # Automotive terms
     'car', 'cars', 'vehicle', 'vehicles', 'auto', 'automobile', 'automotive',
     'engine', 'motor', 'transmission', 'brake', 'brakes', 'tire', 'tires',
     'wheel', 'wheels', 'suspension', 'chassis', 'frame', 'body', 'paint',
@@ -71,7 +72,16 @@ AUTOMOTIVE_KEYWORDS = [
     'audi', 'volkswagen', 'porsche', 'ferrari', 'lamborghini', 'tesla',
     'suv', 'sedan', 'coupe', 'hatchback', 'truck', 'pickup', 'van', 'minivan',
     'roadster', 'convertible', 'wagon', 'crossover', 'sports car', 'luxury',
-    'racing', 'formula', 'nascar', 'drift', 'track', 'circuit', 'rally'
+    'racing', 'formula', 'nascar', 'drift', 'track', 'circuit', 'rally',
+    
+    # Conversational keywords
+    'hi', 'hello', 'hey', 'good morning', 'good afternoon', 'good evening',
+    'thanks', 'thank you', 'please', 'sure', 'ok', 'okay', 'yes', 'no',
+    'next', 'continue', 'more', 'again', 'repeat', 'explain', 'clarify',
+    'i dont understand', 'i didnt understand', 'confused', 'help', 'sorry',
+    'what', 'how', 'when', 'where', 'why', 'who', 'which', 'can you',
+    'tell me', 'show me', 'explain to me', 'i want', 'i need', 'i would like',
+    'exit', 'quit', 'bye', 'goodbye', 'see you', 'stop', 'end', 'finish'
 ]
 
 def is_automotive_related(text):
