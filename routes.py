@@ -144,22 +144,44 @@ def chat():
         # Call OpenRouter API directly with user's message
         client = OpenRouterClient(api_key)
         try:
-            response = client.chat_completion(model, message)
+            import signal
             
+            def timeout_handler(signum, frame):
+                raise TimeoutError("API call timed out")
+            
+            # Set a signal alarm for 20 seconds (shorter than worker timeout)
+            signal.signal(signal.SIGALRM, timeout_handler)
+            signal.alarm(20)
+            
+            try:
+                response = client.chat_completion(model, message)
+                signal.alarm(0)  # Cancel the alarm
+                
+                return jsonify({
+                    'success': True,
+                    'response': {
+                        'content': response['content'],
+                        'model': response.get('model', model),
+                        'filtered': False
+                    }
+                })
+            except (TimeoutError, Exception) as api_error:
+                signal.alarm(0)  # Cancel the alarm
+                logging.error(f"OpenRouter API timeout/error: {str(api_error)}")
+                return jsonify({
+                    'success': True,
+                    'response': {
+                        'content': "I'm sorry, but I'm having trouble connecting to the AI service right now. This might be due to high traffic or a temporary issue. Please try again in a moment!",
+                        'model': model,
+                        'filtered': False
+                    }
+                })
+        except Exception as outer_error:
+            logging.error(f"Chat system error: {str(outer_error)}")
             return jsonify({
                 'success': True,
                 'response': {
-                    'content': response['content'],
-                    'model': response.get('model', model),
-                    'filtered': False
-                }
-            })
-        except Exception as api_error:
-            logging.error(f"OpenRouter API timeout/error: {str(api_error)}")
-            return jsonify({
-                'success': True,
-                'response': {
-                    'content': "I'm sorry, but I'm having trouble connecting to the AI service right now. This might be due to high traffic or a temporary issue. Please try again in a moment!",
+                    'content': "I'm experiencing technical difficulties. Please try your question again!",
                     'model': model,
                     'filtered': False
                 }
