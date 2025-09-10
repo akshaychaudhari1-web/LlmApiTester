@@ -42,7 +42,7 @@ def get_secure_session_data(session_id):
     if session_id not in secure_sessions:
         secure_sessions[session_id] = {
             'api_key': '',
-            'model': 'deepseek/deepseek-chat-v3-0324:free',
+            'model': 'deepseek/deepseek-r1:free',
             'chat_history': []
         }
     return secure_sessions[session_id]
@@ -244,7 +244,7 @@ def test_openrouter():
     try:
         data = request.get_json()
         api_key = data.get('api_key', '').strip()
-        model = data.get('model', 'deepseek/deepseek-chat-v3-0324:free')
+        model = data.get('model', 'deepseek/deepseek-r1:free')
         
         if not api_key:
             return jsonify({'success': False, 'error': 'API key is required'})

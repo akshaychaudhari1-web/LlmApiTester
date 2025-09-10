@@ -297,7 +297,10 @@ body {
 /* Chat Input */
 .chat-input-container {
   border-top: 1px solid var(--border-color);
-  padding-top: 1rem;
+  padding: 1rem;
+  background-color: var(--bg-primary);
+  flex-shrink: 0;
+  min-height: auto;
 }
 
 #message-input {
@@ -489,6 +492,44 @@ body {
   
   .message-content {
     max-width: 95%;
+  }
+  
+  .chat-input-container {
+    padding: 0.5rem;
+  }
+  
+  .input-actions {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .input-actions span {
+    margin-left: 0 !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .container-fluid {
+    height: calc(100vh - 56px);
+    overflow: hidden;
+  }
+  
+  .chat-content {
+    height: 100%;
+    max-height: calc(100vh - 56px);
+  }
+  
+  .chat-input-container {
+    padding: 0.75rem 0.5rem;
+    border-top: 1px solid var(--border-color);
+    background-color: var(--bg-primary);
+  }
+  
+  .input-actions span {
+    font-size: 0.75rem;
+    display: block;
+    margin-top: 0.25rem;
   }
 }
 
