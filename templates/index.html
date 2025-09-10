@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Python IDE for OpenRouter APIs</title>
+    <title>OpenRouter Chat Assistant</title>
     
     <!-- Bootstrap CSS with Replit Dark Theme -->
     <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
@@ -11,11 +11,8 @@
     <!-- Feather Icons -->
     <script src="https://unpkg.com/feather-icons@4.29.0/dist/feather.min.js"></script>
     
-    <!-- Bootstrap JS (load before Monaco to ensure it's available) -->
+    <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
-    <!-- Monaco Editor -->
-    <script src="https://unpkg.com/monaco-editor@0.44.0/min/vs/loader.js"></script>
     
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
@@ -26,116 +23,60 @@
         <nav class="navbar navbar-expand-lg navbar-dark border-bottom">
             <div class="container-fluid">
                 <span class="navbar-brand mb-0 h1">
-                    <i data-feather="code" class="me-2"></i>
-                    Python IDE for OpenRouter
+                    <i data-feather="message-circle" class="me-2"></i>
+                    OpenRouter Chat Assistant
                 </span>
                 <div class="d-flex">
-                    <button class="btn btn-outline-secondary me-2" type="button" data-bs-toggle="modal" data-bs-target="#settingsModal">
+                    <button class="btn btn-outline-secondary" type="button" data-bs-toggle="modal" data-bs-target="#settingsModal">
                         <i data-feather="settings" class="me-1"></i>
                         Settings
-                    </button>
-                    <button class="btn btn-outline-secondary" type="button" data-bs-toggle="modal" data-bs-target="#snippetsModal">
-                        <i data-feather="folder" class="me-1"></i>
-                        Snippets
                     </button>
                 </div>
             </div>
         </nav>
 
         <!-- Main Content -->
-        <div class="row g-3 p-3 h-100">
-            <!-- Left Panel - Code Editor -->
-            <div class="col-lg-6">
+        <div class="row justify-content-center p-3 h-100">
+            <!-- Chat Assistant -->
+            <div class="col-lg-8 col-xl-6">
                 <div class="card h-100">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <h6 class="mb-0">
-                            <i data-feather="edit-3" class="me-2"></i>
-                            Python Code Editor
-                        </h6>
+                        <h5 class="mb-0">
+                            <i data-feather="message-circle" class="me-2"></i>
+                            Chat Assistant
+                        </h5>
                         <div class="btn-group btn-group-sm">
-                            <button id="runCodeBtn" class="btn btn-success" type="button">
-                                <i data-feather="play" class="me-1"></i>
-                                Run Code
-                            </button>
-                            <button id="saveCodeBtn" class="btn btn-outline-secondary" type="button">
-                                <i data-feather="save" class="me-1"></i>
-                                Save
-                            </button>
-                            <button id="clearCodeBtn" class="btn btn-outline-secondary" type="button">
+                            <button id="clearChatBtn" class="btn btn-outline-secondary" type="button">
                                 <i data-feather="trash-2" class="me-1"></i>
                                 Clear
                             </button>
+                            <button id="testApiBtn" class="btn btn-outline-info" type="button">
+                                <i data-feather="cloud" class="me-1"></i>
+                                API Test
+                            </button>
                         </div>
                     </div>
-                    <div class="card-body p-0">
-                        <div id="editor" class="h-100"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Right Panel - Output and Chat -->
-            <div class="col-lg-6">
-                <div class="row g-3 h-100">
-                    <!-- Console Output -->
-                    <div class="col-12">
-                        <div class="card">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <h6 class="mb-0">
-                                    <i data-feather="terminal" class="me-2"></i>
-                                    Console Output
-                                </h6>
-                                <button id="clearOutputBtn" class="btn btn-outline-secondary btn-sm" type="button">
-                                    <i data-feather="x" class="me-1"></i>
-                                    Clear
+                    <div class="card-body d-flex flex-column p-0">
+                        <!-- Chat Messages -->
+                        <div id="chatMessages" class="flex-grow-1 overflow-auto p-3" style="min-height: 400px;">
+                            <div class="text-muted text-center py-5">
+                                <i data-feather="message-circle" class="me-2" style="width: 48px; height: 48px;"></i>
+                                <h4>Welcome to OpenRouter Chat</h4>
+                                <p>Start a conversation with AI models through OpenRouter.<br>
+                                Configure your API key in Settings to get started.</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Chat Input -->
+                        <div class="border-top p-3">
+                            <div class="input-group">
+                                <input type="text" id="chatInput" class="form-control" placeholder="Type your message here..." maxlength="1000">
+                                <button id="sendChatBtn" class="btn btn-primary" type="button">
+                                    <i data-feather="send" class="me-1"></i>
+                                    Send
                                 </button>
                             </div>
-                            <div class="card-body">
-                                <pre id="consoleOutput" class="bg-dark text-light p-3 rounded overflow-auto" style="max-height: 250px;"></pre>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Automotive Chat Assistant -->
-                    <div class="col-12">
-                        <div class="card h-100">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <h6 class="mb-0">
-                                    <i data-feather="message-circle" class="me-2"></i>
-                                    Automotive Chat Assistant
-                                </h6>
-                                <div class="btn-group btn-group-sm">
-                                    <button id="clearChatBtn" class="btn btn-outline-secondary" type="button">
-                                        <i data-feather="trash-2" class="me-1"></i>
-                                        Clear
-                                    </button>
-                                    <button id="testApiBtn" class="btn btn-outline-info" type="button">
-                                        <i data-feather="cloud" class="me-1"></i>
-                                        API Test
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="card-body d-flex flex-column p-0">
-                                <!-- Chat Messages -->
-                                <div id="chatMessages" class="flex-grow-1 overflow-auto p-3" style="min-height: 300px; max-height: 400px;">
-                                    <div class="text-muted text-center py-4">
-                                        <i data-feather="car" class="me-2"></i>
-                                        Ask me anything about automobiles, cars, or automotive technology!
-                                        <br><small>Topics are filtered to automotive discussions only.</small>
-                                    </div>
-                                </div>
-                                
-                                <!-- Chat Input -->
-                                <div class="border-top p-3">
-                                    <div class="input-group">
-                                        <input type="text" id="chatInput" class="form-control" placeholder="Ask about cars, engines, automotive tech..." maxlength="500">
-                                        <button id="sendChatBtn" class="btn btn-primary" type="button">
-                                            <i data-feather="send" class="me-1"></i>
-                                            Send
-                                        </button>
-                                    </div>
-                                    <small class="text-muted">Powered by OpenRouter • Automobile topics only</small>
-                                </div>
-                            </div>
+                            <small class="text-muted mt-2 d-block">Powered by OpenRouter • Multiple AI models available</small>
                         </div>
                     </div>
                 </div>
@@ -161,7 +102,7 @@
                         <div class="form-text">You can get your API key from <a href="https://openrouter.ai/keys" target="_blank">OpenRouter Dashboard</a></div>
                     </div>
                     <div class="mb-3">
-                        <label for="modelSelect" class="form-label">Model</label>
+                        <label for="modelSelect" class="form-label">AI Model</label>
                         <select class="form-select" id="modelSelect">
                             <option value="openai/gpt-3.5-turbo">GPT-3.5 Turbo</option>
                             <option value="openai/gpt-4">GPT-4</option>
@@ -169,7 +110,7 @@
                             <option value="anthropic/claude-3-haiku">Claude 3 Haiku</option>
                             <option value="anthropic/claude-3-sonnet">Claude 3 Sonnet</option>
                             <option value="anthropic/claude-3-opus">Claude 3 Opus</option>
-                            <option value="deepseek/deepseek-chat-v3-0324:free">DeepSeek Chat v3 (Free)</option>
+                            <option value="deepseek/deepseek-chat-v3-0324:free" selected>DeepSeek Chat v3 (Free)</option>
                             <option value="deepseek/deepseek-coder-v2-lite-base">DeepSeek Coder v2 Lite</option>
                             <option value="deepseek/deepseek-r1">DeepSeek R1</option>
                             <option value="meta-llama/llama-2-70b-chat">Llama 2 70B</option>
@@ -180,54 +121,6 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                     <button type="button" class="btn btn-primary" id="saveSettingsBtn">Save Settings</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Snippets Modal -->
-    <div class="modal fade" id="snippetsModal" tabindex="-1" aria-labelledby="snippetsModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="snippetsModalLabel">
-                        <i data-feather="folder" class="me-2"></i>
-                        Code Snippets
-                    </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div id="snippetsList" class="list-group">
-                        <!-- Snippets will be loaded here -->
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Save Snippet Modal -->
-    <div class="modal fade" id="saveSnippetModal" tabindex="-1" aria-labelledby="saveSnippetModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="saveSnippetModalLabel">
-                        <i data-feather="save" class="me-2"></i>
-                        Save Code Snippet
-                    </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="snippetNameInput" class="form-label">Snippet Name</label>
-                        <input type="text" class="form-control" id="snippetNameInput" placeholder="Enter a name for your snippet">
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" id="confirmSaveSnippetBtn">Save Snippet</button>
                 </div>
             </div>
         </div>
