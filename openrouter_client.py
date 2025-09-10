@@ -41,7 +41,7 @@ class OpenRouterClient:
                 "temperature": temperature
             }
             
-            response = requests.post(url, headers=self.headers, json=payload, timeout=60)
+            response = requests.post(url, headers=self.headers, json=payload, timeout=25)
             response.raise_for_status()
             
             data = response.json()

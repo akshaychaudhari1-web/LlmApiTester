@@ -143,16 +143,27 @@ def chat():
         
         # Call OpenRouter API directly with user's message
         client = OpenRouterClient(api_key)
-        response = client.chat_completion(model, message)
-        
-        return jsonify({
-            'success': True,
-            'response': {
-                'content': response['content'],
-                'model': response.get('model', model),
-                'filtered': False
-            }
-        })
+        try:
+            response = client.chat_completion(model, message)
+            
+            return jsonify({
+                'success': True,
+                'response': {
+                    'content': response['content'],
+                    'model': response.get('model', model),
+                    'filtered': False
+                }
+            })
+        except Exception as api_error:
+            logging.error(f"OpenRouter API timeout/error: {str(api_error)}")
+            return jsonify({
+                'success': True,
+                'response': {
+                    'content': "I'm sorry, but I'm having trouble connecting to the AI service right now. This might be due to high traffic or a temporary issue. Please try again in a moment!",
+                    'model': model,
+                    'filtered': False
+                }
+            })
     
     except Exception as e:
         logging.error(f"Chat error: {str(e)}")
