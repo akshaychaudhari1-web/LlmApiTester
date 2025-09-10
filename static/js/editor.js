@@ -1,80 +1,13 @@
 // Global variables
-let editor;
 let currentApiKey = '';
-let currentModel = 'openai/gpt-3.5-turbo';
-
-// Initialize Monaco Editor
-require.config({ paths: { vs: 'https://unpkg.com/monaco-editor@0.44.0/min/vs' } });
-
-require(['vs/editor/editor.main'], function () {
-    // Create the editor
-    editor = monaco.editor.create(document.getElementById('editor'), {
-        value: `# Welcome to Python IDE for OpenRouter!
-# You can write and execute Python code here, and test OpenRouter APIs
-
-import requests
-import json
-import os
-
-# Example: Simple OpenRouter API call
-def test_openrouter():
-    api_key = "your-api-key-here"
-    
-    url = "https://openrouter.ai/api/v1/chat/completions"
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json"
-    }
-    
-    data = {
-        "model": "openai/gpt-3.5-turbo",
-        "messages": [
-            {"role": "user", "content": "Hello! Write a simple Python function."}
-        ]
-    }
-    
-    try:
-        response = requests.post(url, headers=headers, json=data)
-        response.raise_for_status()
-        return response.json()
-    except Exception as e:
-        return f"Error: {str(e)}"
-
-# Uncomment the line below to test (make sure to add your API key)
-# print(test_openrouter())
-
-print("Welcome to the Python IDE for OpenRouter!")
-print("Use the settings modal to configure your API key and model.")
-`,
-        language: 'python',
-        theme: 'vs-dark',
-        automaticLayout: true,
-        minimap: { enabled: false },
-        fontSize: 14,
-        lineNumbers: 'on',
-        folding: true,
-        wordWrap: 'on'
-    });
-    
-    // Load session data on startup
-    loadSessionData();
-});
+let currentModel = 'deepseek/deepseek-chat-v3-0324:free';
 
 // Event Listeners
 document.addEventListener('DOMContentLoaded', function() {
-    // Run Code Button
-    document.getElementById('runCodeBtn').addEventListener('click', runCode);
+    // Load session data on startup
+    loadSessionData();
     
-    // Save Code Button
-    document.getElementById('saveCodeBtn').addEventListener('click', showSaveSnippetModal);
-    
-    // Clear Code Button
-    document.getElementById('clearCodeBtn').addEventListener('click', clearCode);
-    
-    // Clear Output Button
-    document.getElementById('clearOutputBtn').addEventListener('click', clearOutput);
-    
-    // Test API Button (now in chat section)
+    // Test API Button
     const testApiBtn = document.getElementById('testApiBtn');
     if (testApiBtn) {
         testApiBtn.addEventListener('click', testOpenRouterAPI);
@@ -83,35 +16,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Save Settings Button
     document.getElementById('saveSettingsBtn').addEventListener('click', saveSettings);
     
-    // Confirm Save Snippet Button
-    document.getElementById('confirmSaveSnippetBtn').addEventListener('click', saveSnippet);
-    
-    // Load snippets when modal is opened
-    const snippetsModal = document.getElementById('snippetsModal');
-    if (snippetsModal) {
-        snippetsModal.addEventListener('show.bs.modal', loadSnippets);
-    }
-    
-    // Enter key in prompt input (legacy - now using chat input)
-    const promptInput = document.getElementById('promptInput');
-    if (promptInput) {
-        promptInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                testOpenRouterAPI();
-            }
-        });
-    }
-    
-    // Enter key in snippet name input
-    const snippetNameInput = document.getElementById('snippetNameInput');
-    if (snippetNameInput) {
-        snippetNameInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                saveSnippet();
-            }
-        });
-    }
-    
     // Chat functionality
     const sendChatBtn = document.getElementById('sendChatBtn');
     const clearChatBtn = document.getElementById('clearChatBtn');
@@ -119,14 +23,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (sendChatBtn) {
         sendChatBtn.addEventListener('click', sendChatMessage);
-    } else {
-        console.error('Send chat button not found');
     }
     
     if (clearChatBtn) {
         clearChatBtn.addEventListener('click', clearChat);
-    } else {
-        console.error('Clear chat button not found');
     }
     
     // Enter key in chat input
@@ -136,8 +36,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 sendChatMessage();
             }
         });
-    } else {
-        console.error('Chat input not found');
     }
 });
 
@@ -155,68 +53,6 @@ async function loadSessionData() {
         document.getElementById('modelSelect').value = currentModel;
     } catch (error) {
         console.error('Failed to load session data:', error);
-    }
-}
-
-// Run Python code
-async function runCode() {
-    const code = editor.getValue();
-    const button = document.getElementById('runCodeBtn');
-    const output = document.getElementById('consoleOutput');
-    
-    if (!code.trim()) {
-        output.textContent = 'Error: No code to execute';
-        return;
-    }
-    
-    // Show loading state
-    button.classList.add('loading');
-    button.disabled = true;
-    button.innerHTML = '<i data-feather="loader" class="me-1"></i>Running...';
-    if (typeof feather !== 'undefined') {
-        feather.replace();
-    }
-    
-    output.textContent = 'Executing code...\n';
-    
-    try {
-        const response = await fetch('/execute', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ code: code })
-        });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            let outputText = '';
-            
-            if (result.output) {
-                outputText += `Output:\n${result.output}\n`;
-            }
-            
-            if (result.error) {
-                outputText += `Errors:\n${result.error}\n`;
-            }
-            
-            outputText += `\nExecution completed in ${result.execution_time}s`;
-            
-            output.textContent = outputText || 'Code executed successfully with no output.';
-        } else {
-            output.textContent = `Error: ${result.error}`;
-        }
-    } catch (error) {
-        output.textContent = `Network error: ${error.message}`;
-    } finally {
-        // Reset button state
-        button.classList.remove('loading');
-        button.disabled = false;
-        button.innerHTML = '<i data-feather="play" class="me-1"></i>Run Code';
-        if (typeof feather !== 'undefined') {
-            feather.replace();
-        }
     }
 }
 
@@ -291,248 +127,53 @@ async function testOpenRouterAPI() {
         // Reset button state
         button.classList.remove('loading');
         button.disabled = false;
-        button.innerHTML = '<i data-feather="send" class="me-1"></i>Test API';
+        button.innerHTML = '<i data-feather="cloud" class="me-1"></i>API Test';
         if (typeof feather !== 'undefined') {
             feather.replace();
         }
-    }
-}
-
-// Save settings
-async function saveSettings() {
-    currentApiKey = document.getElementById('apiKeyInput').value;
-    currentModel = document.getElementById('modelSelect').value;
-    
-    try {
-        // Save to backend session
-        const response = await fetch('/save_session_data', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                api_key: currentApiKey,
-                model: currentModel
-            })
-        });
         
-        const result = await response.json();
-        
-        if (result.success) {
-            // Close modal
-            if (typeof bootstrap !== 'undefined') {
-                const modal = bootstrap.Modal.getInstance(document.getElementById('settingsModal'));
-                if (modal) modal.hide();
-            }
-            
-            console.log('Settings saved');
-        } else {
-            alert(`Error saving settings: ${result.error}`);
-        }
-    } catch (error) {
-        alert(`Network error: ${error.message}`);
+        // Clear input
+        chatInput.value = '';
     }
 }
 
-// Clear code editor
-function clearCode() {
-    if (confirm('Are you sure you want to clear the code editor?')) {
-        editor.setValue('');
-    }
-}
-
-// Clear output
-function clearOutput() {
-    document.getElementById('consoleOutput').textContent = '';
-}
-
-// Show save snippet modal
-function showSaveSnippetModal() {
-    const code = editor.getValue();
-    if (!code.trim()) {
-        alert('No code to save');
-        return;
-    }
-    
-    document.getElementById('snippetNameInput').value = '';
-    if (typeof bootstrap !== 'undefined') {
-        const modal = new bootstrap.Modal(document.getElementById('saveSnippetModal'));
-        modal.show();
-    }
-}
-
-// Save snippet
-async function saveSnippet() {
-    const name = document.getElementById('snippetNameInput').value;
-    const code = editor.getValue();
-    
-    if (!name.trim()) {
-        alert('Please enter a name for the snippet');
-        return;
-    }
-    
-    if (!code.trim()) {
-        alert('No code to save');
-        return;
-    }
-    
-    try {
-        const response = await fetch('/save_snippet', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                name: name,
-                code: code
-            })
-        });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            // Close modal
-            if (typeof bootstrap !== 'undefined') {
-                const modal = bootstrap.Modal.getInstance(document.getElementById('saveSnippetModal'));
-                if (modal) modal.hide();
-            }
-            
-            alert('Snippet saved successfully!');
-        } else {
-            alert(`Error saving snippet: ${result.error}`);
-        }
-    } catch (error) {
-        alert(`Network error: ${error.message}`);
-    }
-}
-
-// Load snippets
-async function loadSnippets() {
-    const snippetsList = document.getElementById('snippetsList');
-    snippetsList.innerHTML = '<div class="text-center"><em class="text-muted">Loading snippets...</em></div>';
-    
-    try {
-        const response = await fetch('/load_snippets');
-        const result = await response.json();
-        
-        if (result.success) {
-            if (result.snippets.length === 0) {
-                snippetsList.innerHTML = '<div class="text-center"><em class="text-muted">No saved snippets</em></div>';
-                return;
-            }
-            
-            snippetsList.innerHTML = '';
-            
-            result.snippets.forEach(snippet => {
-                const snippetItem = document.createElement('div');
-                snippetItem.className = 'list-group-item d-flex justify-content-between align-items-start';
-                snippetItem.innerHTML = `
-                    <div class="ms-2 me-auto">
-                        <div class="fw-bold">${escapeHtml(snippet.name)}</div>
-                        <div class="snippet-meta">
-                            Created: ${new Date(snippet.created_at).toLocaleDateString()}
-                            ${snippet.updated_at !== snippet.created_at ? '• Updated: ' + new Date(snippet.updated_at).toLocaleDateString() : ''}
-                        </div>
-                    </div>
-                    <div class="btn-group btn-group-sm">
-                        <button class="btn btn-outline-primary" onclick="loadSnippet(${snippet.id})">
-                            <i data-feather="eye" width="16" height="16"></i>
-                        </button>
-                        <button class="btn btn-outline-danger" onclick="deleteSnippet(${snippet.id})">
-                            <i data-feather="trash-2" width="16" height="16"></i>
-                        </button>
-                    </div>
-                `;
-                snippetsList.appendChild(snippetItem);
-            });
-            
-            if (typeof feather !== 'undefined') {
-                feather.replace();
-            }
-        } else {
-            snippetsList.innerHTML = `<div class="text-center text-danger">Error: ${result.error}</div>`;
-        }
-    } catch (error) {
-        snippetsList.innerHTML = `<div class="text-center text-danger">Network error: ${error.message}</div>`;
-    }
-}
-
-// Load specific snippet
-async function loadSnippet(snippetId) {
-    try {
-        const response = await fetch(`/load_snippet/${snippetId}`);
-        const result = await response.json();
-        
-        if (result.success) {
-            editor.setValue(result.snippet.code);
-            
-            // Close modal
-            if (typeof bootstrap !== 'undefined') {
-                const modal = bootstrap.Modal.getInstance(document.getElementById('snippetsModal'));
-                if (modal) modal.hide();
-            }
-        } else {
-            alert(`Error loading snippet: ${result.error}`);
-        }
-    } catch (error) {
-        alert(`Network error: ${error.message}`);
-    }
-}
-
-// Delete snippet
-async function deleteSnippet(snippetId) {
-    if (!confirm('Are you sure you want to delete this snippet?')) {
-        return;
-    }
-    
-    try {
-        const response = await fetch(`/delete_snippet/${snippetId}`, {
-            method: 'DELETE'
-        });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            loadSnippets(); // Reload the list
-        } else {
-            alert(`Error deleting snippet: ${result.error}`);
-        }
-    } catch (error) {
-        alert(`Network error: ${error.message}`);
-    }
-}
-
-// Chat functionality
+// Send chat message
 async function sendChatMessage() {
-    const input = document.getElementById('chatInput');
-    const message = input.value.trim();
-    const button = document.getElementById('sendChatBtn');
-    const messagesContainer = document.getElementById('chatMessages');
+    const chatInput = document.getElementById('chatInput');
+    const sendBtn = document.getElementById('sendChatBtn');
+    
+    if (!chatInput || !sendBtn) {
+        console.error('Chat elements not found');
+        return;
+    }
+    
+    const message = chatInput.value.trim();
     
     if (!message) {
         return;
     }
     
-    // Clear the welcome message if it exists
-    const welcomeMsg = messagesContainer.querySelector('.text-muted.text-center');
-    if (welcomeMsg) {
-        welcomeMsg.remove();
+    if (!currentApiKey) {
+        addChatMessage('error', 'Please configure your OpenRouter API key in Settings first');
+        return;
     }
     
-    // Add user message to chat
-    addChatMessage('user', message);
-    input.value = '';
-    
     // Show loading state
-    button.classList.add('loading');
-    button.disabled = true;
-    button.innerHTML = '<i data-feather="loader" class="me-1"></i>Thinking...';
+    sendBtn.classList.add('loading');
+    sendBtn.disabled = true;
+    sendBtn.innerHTML = '<i data-feather="loader" class="me-1"></i>Sending...';
     if (typeof feather !== 'undefined') {
         feather.replace();
     }
     
+    // Add user message to chat
+    addChatMessage('user', message);
+    
     // Add thinking indicator
-    const thinkingId = addChatMessage('assistant', 'Thinking about your automotive question...', true);
+    const thinkingId = addChatMessage('assistant', 'Thinking...', true);
+    
+    // Clear input
+    chatInput.value = '';
     
     try {
         const response = await fetch('/chat', {
@@ -540,7 +181,9 @@ async function sendChatMessage() {
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ message: message })
+            body: JSON.stringify({
+                message: message
+            })
         });
         
         const result = await response.json();
@@ -552,15 +195,9 @@ async function sendChatMessage() {
         }
         
         if (result.success) {
-            const responseContent = result.response.content;
-            addChatMessage('assistant', responseContent);
-            
-            // Show model info if available
-            if (result.response.model && !result.response.filtered) {
-                addChatMessage('system', `Response generated by: ${result.response.model}`);
-            }
+            addChatMessage('assistant', result.response);
         } else {
-            addChatMessage('error', `Error: ${result.error}`);
+            addChatMessage('error', result.error || 'Failed to get response');
         }
     } catch (error) {
         // Remove thinking indicator
@@ -571,69 +208,73 @@ async function sendChatMessage() {
         addChatMessage('error', `Network error: ${error.message}`);
     } finally {
         // Reset button state
-        button.classList.remove('loading');
-        button.disabled = false;
-        button.innerHTML = '<i data-feather="send" class="me-1"></i>Send';
+        sendBtn.classList.remove('loading');
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = '<i data-feather="send" class="me-1"></i>Send';
         if (typeof feather !== 'undefined') {
             feather.replace();
         }
     }
 }
 
-function addChatMessage(type, content, isTemporary = false) {
-    const messagesContainer = document.getElementById('chatMessages');
+// Add message to chat
+function addChatMessage(type, content, isThinking = false) {
+    const chatMessages = document.getElementById('chatMessages');
     const messageId = 'msg-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+    
+    // Remove welcome message if it exists
+    const welcomeMessage = chatMessages.querySelector('.text-muted.text-center');
+    if (welcomeMessage) {
+        welcomeMessage.remove();
+    }
     
     const messageDiv = document.createElement('div');
     messageDiv.id = messageId;
-    messageDiv.className = 'mb-3';
+    messageDiv.className = `message ${type} mb-3`;
     
-    let iconClass, bgClass, textClass;
+    let iconClass = 'user';
+    let bgClass = 'bg-primary';
+    let textClass = 'text-white';
     
     switch (type) {
-        case 'user':
-            iconClass = 'user';
-            bgClass = 'bg-primary';
-            textClass = 'text-white';
-            break;
         case 'assistant':
             iconClass = 'message-circle';
-            bgClass = isTemporary ? 'bg-secondary' : 'bg-success';
-            textClass = 'text-white';
+            bgClass = 'bg-secondary';
             break;
         case 'error':
             iconClass = 'alert-circle';
             bgClass = 'bg-danger';
-            textClass = 'text-white';
             break;
         case 'system':
             iconClass = 'info';
-            bgClass = 'bg-info';
-            textClass = 'text-white';
+            bgClass = 'bg-success';
             break;
-        default:
-            iconClass = 'message-square';
-            bgClass = 'bg-secondary';
-            textClass = 'text-white';
     }
+    
+    const thinkingClass = isThinking ? ' thinking' : '';
     
     messageDiv.innerHTML = `
         <div class="d-flex align-items-start">
-            <div class="${bgClass} ${textClass} rounded-circle p-2 me-3" style="min-width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
-                <i data-feather="${iconClass}" width="18" height="18"></i>
+            <div class="flex-shrink-0 me-2">
+                <div class="rounded-circle ${bgClass} ${textClass} p-2 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                    <i data-feather="${iconClass}" style="width: 16px; height: 16px;"></i>
+                </div>
             </div>
             <div class="flex-grow-1">
-                <div class="bg-dark text-light p-3 rounded">
-                    <div class="message-content">${escapeHtml(content)}</div>
-                    <small class="text-muted">${new Date().toLocaleTimeString()}</small>
+                <div class="bg-dark p-3 rounded${thinkingClass}" style="word-wrap: break-word;">
+                    ${isThinking ? '<div class="typing-indicator"><span></span><span></span><span></span></div>' : content}
                 </div>
+                <small class="text-muted">${new Date().toLocaleTimeString()}</small>
             </div>
         </div>
     `;
     
-    messagesContainer.appendChild(messageDiv);
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    chatMessages.appendChild(messageDiv);
     
+    // Scroll to bottom
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+    
+    // Replace feather icons
     if (typeof feather !== 'undefined') {
         feather.replace();
     }
@@ -641,50 +282,84 @@ function addChatMessage(type, content, isTemporary = false) {
     return messageId;
 }
 
-async function clearChat() {
-    if (!confirm('Are you sure you want to clear the chat history?')) {
+// Clear chat
+function clearChat() {
+    const chatMessages = document.getElementById('chatMessages');
+    chatMessages.innerHTML = `
+        <div class="text-muted text-center py-5">
+            <i data-feather="message-circle" class="me-2" style="width: 48px; height: 48px;"></i>
+            <h4>Welcome to OpenRouter Chat</h4>
+            <p>Start a conversation with AI models through OpenRouter.<br>
+            Configure your API key in Settings to get started.</p>
+        </div>
+    `;
+    
+    if (typeof feather !== 'undefined') {
+        feather.replace();
+    }
+}
+
+// Save settings
+async function saveSettings() {
+    const apiKeyInput = document.getElementById('apiKeyInput');
+    const modelSelect = document.getElementById('modelSelect');
+    const saveBtn = document.getElementById('saveSettingsBtn');
+    
+    if (!apiKeyInput || !modelSelect) {
+        console.error('Settings elements not found');
         return;
     }
     
+    const apiKey = apiKeyInput.value.trim();
+    const model = modelSelect.value;
+    
+    if (!apiKey) {
+        alert('Please enter your OpenRouter API key');
+        return;
+    }
+    
+    // Show loading state
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving...';
+    
     try {
-        const response = await fetch('/clear_chat', {
+        const response = await fetch('/test_openrouter', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-            }
+            },
+            body: JSON.stringify({
+                api_key: apiKey,
+                model: model,
+                prompt: 'Hello, this is a test connection.'
+            })
         });
         
         const result = await response.json();
         
         if (result.success) {
-            const messagesContainer = document.getElementById('chatMessages');
-            messagesContainer.innerHTML = `
-                <div class="text-muted text-center py-4">
-                    <i data-feather="car" class="me-2"></i>
-                    Ask me anything about automobiles, cars, or automotive technology!
-                    <br><small>Topics are filtered to automotive discussions only.</small>
-                </div>
-            `;
-            if (typeof feather !== 'undefined') {
-                feather.replace();
+            // Update global variables
+            currentApiKey = apiKey;
+            currentModel = model;
+            
+            // Close modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('settingsModal'));
+            if (modal) {
+                modal.hide();
             }
+            
+            // Show success message in chat
+            addChatMessage('system', '✓ Settings saved successfully! OpenRouter connection verified.');
+            
+            console.log('Settings saved');
         } else {
-            alert(`Error clearing chat: ${result.error}`);
+            alert('Failed to verify API key: ' + result.error);
         }
     } catch (error) {
-        alert(`Network error: ${error.message}`);
+        alert('Failed to save settings: ' + error.message);
+    } finally {
+        // Reset button state
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save Settings';
     }
-}
-
-// Utility function to escape HTML
-function escapeHtml(text) {
-    const map = {
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#039;'
-    };
-    
-    return text.replace(/[&<>"']/g, function(m) { return map[m]; });
 }
