@@ -3,80 +3,139 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OpenRouter Chat Assistant</title>
+    <title>Pilot RAG - Automotive Document Assistant</title>
     
-    <!-- Bootstrap CSS with Replit Dark Theme -->
-    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     
     <!-- Feather Icons -->
-    <script src="https://unpkg.com/feather-icons@4.29.0/dist/feather.min.js"></script>
-    
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/feather-icons"></script>
     
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-    <div class="container-fluid h-100">
-        <!-- Header -->
-        <nav class="navbar navbar-expand-lg navbar-dark border-bottom">
-            <div class="container-fluid">
-                <span class="navbar-brand mb-0 h1">
-                    <i data-feather="message-circle" class="me-2"></i>
-                    OpenRouter Chat Assistant
-                </span>
-                <div class="d-flex">
-                    <button class="btn btn-outline-secondary" type="button" data-bs-toggle="modal" data-bs-target="#settingsModal">
-                        <i data-feather="settings" class="me-1"></i>
-                        Settings
-                    </button>
-                </div>
-            </div>
-        </nav>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i data-feather="file-text"></i>
+                Pilot RAG
+            </a>
+            <span class="navbar-text">
+                Automotive Document Assistant
+            </span>
+            <button class="btn btn-outline-light btn-sm" data-bs-toggle="modal" data-bs-target="#settingsModal">
+                <i data-feather="settings"></i>
+                Settings
+            </button>
+        </div>
+    </nav>
 
-        <!-- Main Content -->
-        <div class="row justify-content-center p-3 h-100">
-            <!-- Chat Assistant -->
-            <div class="col-lg-8 col-xl-6">
-                <div class="card h-100">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">
-                            <i data-feather="message-circle" class="me-2"></i>
-                            Chat Assistant
-                        </h5>
-                        <div class="btn-group btn-group-sm">
-                            <button id="clearChatBtn" class="btn btn-outline-secondary" type="button">
-                                <i data-feather="trash-2" class="me-1"></i>
-                                Clear
-                            </button>
-                            <button id="testApiBtn" class="btn btn-outline-info" type="button">
-                                <i data-feather="cloud" class="me-1"></i>
-                                API Test
-                            </button>
+    <div class="container-fluid h-100">
+        <div class="row h-100">
+            <!-- Document Management Sidebar -->
+            <div class="col-md-3 sidebar">
+                <div class="sidebar-content">
+                    <h5 class="sidebar-title">
+                        <i data-feather="book-open"></i>
+                        Documents
+                    </h5>
+                    
+                    <!-- Upload Section -->
+                    <div class="upload-section mb-4">
+                        <label for="file-upload" class="btn btn-primary btn-sm w-100">
+                            <i data-feather="upload"></i>
+                            Upload PDF
+                        </label>
+                        <input type="file" id="file-upload" accept=".pdf" style="display: none;">
+                        <div class="upload-progress" style="display: none;">
+                            <div class="progress mt-2">
+                                <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                            </div>
                         </div>
                     </div>
-                    <div class="card-body d-flex flex-column p-0">
-                        <!-- Chat Messages -->
-                        <div id="chatMessages" class="flex-grow-1 overflow-auto p-3" style="min-height: 400px;">
-                            <div class="text-muted text-center py-5">
-                                <i data-feather="message-circle" class="me-2" style="width: 48px; height: 48px;"></i>
-                                <h4>Welcome to OpenRouter Chat</h4>
-                                <p>Start a conversation with AI models through OpenRouter.<br>
-                                Configure your API key in Settings to get started.</p>
+                    
+                    <!-- Document List -->
+                    <div class="document-list">
+                        <div id="documents-container">
+                            <div class="text-muted small">
+                                <i data-feather="info"></i>
+                                Upload automotive PDFs to get started
                             </div>
                         </div>
-                        
-                        <!-- Chat Input -->
-                        <div class="border-top p-3">
-                            <div class="input-group">
-                                <input type="text" id="chatInput" class="form-control" placeholder="Type your message here..." maxlength="1000">
-                                <button id="sendChatBtn" class="btn btn-primary" type="button">
-                                    <i data-feather="send" class="me-1"></i>
-                                    Send
-                                </button>
+                    </div>
+                    
+                    <!-- Stats Section -->
+                    <div class="stats-section mt-4">
+                        <h6 class="text-muted">Statistics</h6>
+                        <div class="stats-content">
+                            <div class="stat-item">
+                                <span class="stat-label">Documents:</span>
+                                <span id="stat-documents">0</span>
                             </div>
-                            <small class="text-muted mt-2 d-block">Powered by OpenRouter • Multiple AI models available</small>
+                            <div class="stat-item">
+                                <span class="stat-label">Text Chunks:</span>
+                                <span id="stat-chunks">0</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Search Ready:</span>
+                                <span id="stat-ready">No</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-outline-secondary btn-sm w-100 mt-2" onclick="refreshStats()">
+                            <i data-feather="refresh-cw"></i>
+                            Refresh
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Chat Interface -->
+            <div class="col-md-9 chat-container">
+                <div class="chat-content">
+                    <!-- Chat Messages -->
+                    <div class="chat-messages" id="chat-messages">
+                        <div class="message system-message">
+                            <div class="message-content">
+                                <div class="message-header">
+                                    <i data-feather="cpu"></i>
+                                    <strong>Pilot RAG Assistant</strong>
+                                </div>
+                                <div class="message-text">
+                                    Welcome! I'm your automotive document assistant. Upload PDF manuals, guides, or technical documents, then ask me questions about their content. I specialize in automotive topics only.
+                                    <br><br>
+                                    <strong>Features:</strong>
+                                    <ul>
+                                        <li>📄 Upload automotive PDF documents</li>
+                                        <li>🔍 Smart document search and retrieval</li>
+                                        <li>💬 Context-aware conversations</li>
+                                        <li>🚗 Automotive expertise only</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Chat Input -->
+                    <div class="chat-input-container">
+                        <div class="input-group">
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="message-input" 
+                                   placeholder="Ask about your automotive documents..."
+                                   maxlength="1000">
+                            <button class="btn btn-primary" id="send-button" onclick="sendMessage()">
+                                <i data-feather="send"></i>
+                            </button>
+                        </div>
+                        <div class="input-actions mt-2">
+                            <button class="btn btn-outline-secondary btn-sm" onclick="clearChat()">
+                                <i data-feather="trash-2"></i>
+                                Clear Chat
+                            </button>
+                            <span class="text-muted small ms-2">
+                                Powered by OpenRouter • Automotive Focus • RAG Technology
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -85,57 +144,68 @@
     </div>
 
     <!-- Settings Modal -->
-    <div class="modal fade" id="settingsModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
+    <div class="modal fade" id="settingsModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="settingsModalLabel">
-                        <i data-feather="settings" class="me-2"></i>
-                        OpenRouter Settings
+                    <h5 class="modal-title">
+                        <i data-feather="settings"></i>
+                        Settings
                     </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="apiKeyInput" class="form-label">OpenRouter API Key</label>
-                        <input type="password" class="form-control" id="apiKeyInput" placeholder="Enter your OpenRouter API key">
-                        <div class="form-text">You can get your API key from <a href="https://openrouter.ai/keys" target="_blank">OpenRouter Dashboard</a></div>
-                    </div>
-                    <div class="mb-3">
-                        <label for="modelSelect" class="form-label">AI Model</label>
-                        <select class="form-select" id="modelSelect">
-                            <option value="openai/gpt-3.5-turbo">GPT-3.5 Turbo</option>
-                            <option value="openai/gpt-4">GPT-4</option>
-                            <option value="openai/gpt-4-turbo">GPT-4 Turbo</option>
-                            <option value="anthropic/claude-3-haiku">Claude 3 Haiku</option>
-                            <option value="anthropic/claude-3-sonnet">Claude 3 Sonnet</option>
-                            <option value="anthropic/claude-3-opus">Claude 3 Opus</option>
-                            <option value="deepseek/deepseek-chat-v3-0324:free" selected>DeepSeek Chat v3 (Free)</option>
-                            <option value="deepseek/deepseek-coder-v2-lite-base">DeepSeek Coder v2 Lite</option>
-                            <option value="deepseek/deepseek-r1">DeepSeek R1</option>
-                            <option value="meta-llama/llama-2-70b-chat">Llama 2 70B</option>
-                            <option value="google/gemma-7b-it">Gemma 7B</option>
-                        </select>
-                    </div>
+                    <form id="settings-form">
+                        <div class="mb-3">
+                            <label for="api-key" class="form-label">OpenRouter API Key</label>
+                            <input type="password" class="form-control" id="api-key" 
+                                   placeholder="Enter your OpenRouter API key">
+                            <div class="form-text">
+                                Get your API key from <a href="https://openrouter.ai/keys" target="_blank">OpenRouter</a>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="model-select" class="form-label">AI Model</label>
+                            <select class="form-select" id="model-select">
+                                <option value="deepseek/deepseek-chat-v3-0324:free">DeepSeek Chat (Free)</option>
+                                <option value="openai/gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                                <option value="openai/gpt-4">GPT-4</option>
+                                <option value="anthropic/claude-3-haiku">Claude 3 Haiku</option>
+                                <option value="meta-llama/llama-3-8b-instruct:free">Llama 3 8B (Free)</option>
+                            </select>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-secondary" onclick="testAPI()">
+                                <i data-feather="wifi"></i>
+                                Test Connection
+                            </button>
+                            <button type="submit" class="btn btn-primary">
+                                <i data-feather="save"></i>
+                                Save Settings
+                            </button>
+                        </div>
+                    </form>
+                    <div id="api-test-result" class="mt-3" style="display: none;"></div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-primary" id="saveSettingsBtn">Save Settings</button>
+                    <button type="button" class="btn btn-danger" onclick="clearSession()">
+                        <i data-feather="trash"></i>
+                        Clear All Data
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
     <!-- Custom JS -->
-    <script src="{{ url_for('static', filename='js/editor.js') }}?v={{ range(1, 10000) | random }}"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     
     <script>
-        // Initialize Feather icons after page loads
-        document.addEventListener('DOMContentLoaded', function() {
-            if (typeof feather !== 'undefined') {
-                feather.replace();
-            }
-        });
+        // Initialize Feather icons
+        feather.replace();
     </script>
 </body>
 </html>

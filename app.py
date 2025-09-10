@@ -1,7 +1,6 @@
 import os
 import logging
-import sys
-from flask import Flask
+from flask import Flask, session
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -14,56 +13,47 @@ class Base(DeclarativeBase):
 
 db = SQLAlchemy(model_class=Base)
 
-# Validate required environment variables
-def validate_environment_variables():
-    required_vars = ["SESSION_SECRET", "DATABASE_URL"]
-    missing_vars = []
-    
-    for var in required_vars:
-        if not os.environ.get(var):
-            missing_vars.append(var)
-    
-    if missing_vars:
-        logging.error(f"Missing required environment variables: {', '.join(missing_vars)}")
-        logging.error("Please configure the following environment variables in your deployment:")
-        for var in missing_vars:
-            logging.error(f"  - {var}")
-        sys.exit(1)
-
-# Validate environment on startup
-validate_environment_variables()
-
-# create the app
+# Create the Flask app
 app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET")
+if not app.secret_key:
+    raise ValueError("SESSION_SECRET environment variable is required")
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
-# configure the database, relative to the app instance folder
-app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
+# Configure the database
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL", "sqlite:///pilot_rag.db")
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
     "pool_recycle": 300,
     "pool_pre_ping": True,
 }
 
-# initialize the app with the extension
+# File upload configuration
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(__file__), 'uploads')
+
+# Initialize the app with the extension
 db.init_app(app)
 
-# Import routes to register endpoints
-import routes  # noqa: F401
+# Ensure upload directory exists
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+os.makedirs(os.path.join(os.path.dirname(__file__), 'vectors'), exist_ok=True)
+
+# Environment validation
+if not os.environ.get("DATABASE_URL") and not os.path.exists("pilot_rag.db"):
+    logging.warning("DATABASE_URL not set, using SQLite for development")
 
 with app.app_context():
-    # Import models 
+    # Import models to ensure tables are created
     import models  # noqa: F401
-    
-    # Create all tables with error handling
     try:
         db.create_all()
         logging.info("Database tables created successfully")
     except Exception as e:
         logging.error(f"Database initialization failed: {e}")
-        logging.error("Please check your DATABASE_URL configuration and database connectivity")
-        logging.error("Application will exit - database connection is required for proper functionality")
-        sys.exit(1)
+        raise
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+# Register routes
+from routes import *  # noqa: F401, F403
+
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=5000)

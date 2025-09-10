@@ -1,29 +1,44 @@
-import json
-import logging
+import os
 import uuid
-from flask import render_template, request, jsonify, session
-from app import app
-from openrouter_client import OpenRouterClient
-import re
+import logging
+from flask import render_template, request, jsonify, session, redirect, url_for, flash
+from werkzeug.utils import secure_filename
+from app import app, db
+from models import Document, DocumentChunk, ChatHistory
+from document_processor import DocumentProcessor, VectorSearchEngine
+from rag_client import RAGClient
 
-# Server-side storage for secure data (API keys and chat history)
-# This prevents sensitive data from being stored in client cookies
+logger = logging.getLogger(__name__)
+
+# In-memory storage for session data (similar to automotive chat)
 secure_sessions = {}
 
-@app.route('/')
-def index():
-    """Chat assistant interface"""
-    return render_template('index.html')
+# Initialize components
+document_processor = DocumentProcessor()
+vector_search = None  # Will be initialized in first request
 
+ALLOWED_EXTENSIONS = {'pdf'}
+AUTOMOTIVE_KEYWORDS = [
+    'car', 'automobile', 'vehicle', 'engine', 'motor', 'transmission', 'brake',
+    'suspension', 'steering', 'tire', 'wheel', 'battery', 'fuel', 'oil', 
+    'maintenance', 'repair', 'diagnostic', 'performance', 'safety', 'airbag',
+    'toyota', 'honda', 'ford', 'chevrolet', 'bmw', 'mercedes', 'audi',
+    'what', 'how', 'when', 'where', 'why', 'tell', 'explain', 'help',
+    'hi', 'hello', 'thanks', 'please'
+]
+
+def allowed_file(filename):
+    """Check if file extension is allowed"""
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def get_or_create_secure_session_id():
-    """Get or create a secure session ID for server-side storage"""
+    """Get or create secure session ID"""
     if 'secure_session_id' not in session:
         session['secure_session_id'] = str(uuid.uuid4())
     return session['secure_session_id']
 
 def get_secure_session_data(session_id):
-    """Get secure session data from server-side storage"""
+    """Get secure session data"""
     if session_id not in secure_sessions:
         secure_sessions[session_id] = {
             'api_key': '',
@@ -32,135 +47,107 @@ def get_secure_session_data(session_id):
         }
     return secure_sessions[session_id]
 
-@app.route('/test_openrouter', methods=['POST'])
-def test_openrouter():
-    """Test OpenRouter API connection"""
+def get_vector_search():
+    """Get or initialize vector search engine"""
+    global vector_search
+    if vector_search is None:
+        vector_search = VectorSearchEngine()
+    return vector_search
+
+def is_automotive_related(text):
+    """Check if text contains automotive keywords"""
+    text_lower = text.lower()
+    return any(keyword in text_lower for keyword in AUTOMOTIVE_KEYWORDS)
+
+@app.route('/')
+def index():
+    """Main page with chat interface and document management"""
+    return render_template('index.html')
+
+@app.route('/upload_document', methods=['POST'])
+def upload_document():
+    """Upload and process PDF document"""
     try:
-        data = request.get_json()
-        api_key = data.get('api_key', '')  # Frontend can still set API key
-        model = data.get('model', 'openai/gpt-3.5-turbo')
-        prompt = data.get('prompt', 'Hello, world!')
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'error': 'No file provided'})
         
-        # Get secure session data 
-        session_id = get_or_create_secure_session_id()
-        secure_data = get_secure_session_data(session_id)
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'success': False, 'error': 'No file selected'})
         
-        # Use provided API key or fallback to stored one
-        if api_key:
-            # Frontend provided new API key - store it
-            secure_data['api_key'] = api_key
-            secure_data['model'] = model
-        else:
-            # Use stored API key for testing
-            api_key = secure_data['api_key']
-            secure_data['model'] = model
+        if not allowed_file(file.filename):
+            return jsonify({'success': False, 'error': 'Only PDF files are allowed'})
         
-        if not api_key:
-            return jsonify({'success': False, 'error': 'API key is required'})
+        # Check file size (16MB limit)
+        if request.content_length > app.config['MAX_CONTENT_LENGTH']:
+            return jsonify({'success': False, 'error': 'File too large (max 16MB)'})
         
-        client = OpenRouterClient(api_key)
-        # For API testing, create a simple conversation history with just the test prompt
-        test_conversation = [
-            {
-                'role': 'user',
-                'content': prompt
-            }
-        ]
-        response = client.chat_completion(model, test_conversation)
+        # Generate secure filename
+        original_filename = file.filename or "unknown.pdf"
+        filename = secure_filename(f"{uuid.uuid4()}_{original_filename}")
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        
+        # Save file
+        file.save(file_path)
+        
+        # Process document
+        document = document_processor.process_pdf(file_path, filename, original_filename)
+        
+        # Refresh search index
+        get_vector_search().refresh_index()
         
         return jsonify({
             'success': True,
-            'response': response,
-            'model': model
+            'message': f'Document "{original_filename}" uploaded and processed successfully',
+            'document': document.to_dict()
         })
-    
+        
     except Exception as e:
-        logging.error(f"OpenRouter API error: {str(e)}")
-        return jsonify({'success': False, 'error': f'API call failed: {str(e)}'})
+        logger.error(f"Upload error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)})
 
+@app.route('/get_documents', methods=['GET'])
+def get_documents():
+    """Get list of uploaded documents"""
+    try:
+        documents = Document.query.all()
+        return jsonify({
+            'success': True,
+            'documents': [doc.to_dict() for doc in documents]
+        })
+    except Exception as e:
+        logger.error(f"Error getting documents: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)})
 
-
-
-
-@app.route('/get_session_data', methods=['GET'])
-def get_session_data():
-    """Get stored session data (secure - no API key exposure)"""
-    session_id = get_or_create_secure_session_id()
-    secure_data = get_secure_session_data(session_id)
-    
-    return jsonify({
-        'api_key': '***' if secure_data['api_key'] else '',  # Never expose actual API key
-        'model': secure_data['model'],
-        'has_api_key': bool(secure_data['api_key'])  # Just indicate if key is set
-    })
-
-@app.route('/clear_session', methods=['POST'])
-def clear_session():
-    """Clear all session data"""
-    # Clear server-side secure data
-    session_id = session.get('secure_session_id')
-    if session_id and session_id in secure_sessions:
-        del secure_sessions[session_id]
-    
-    # Clear client-side session
-    session.clear()
-    return jsonify({'success': True, 'message': 'Session data cleared'})
-
-# Automotive topic keywords for filtering
-AUTOMOTIVE_KEYWORDS = [
-    # Automotive terms
-    'car', 'cars', 'vehicle', 'vehicles', 'auto', 'automobile', 'automotive',
-    'engine', 'motor', 'transmission', 'brake', 'brakes', 'tire', 'tires',
-    'wheel', 'wheels', 'suspension', 'chassis', 'frame', 'body', 'paint',
-    'fuel', 'gasoline', 'diesel', 'electric', 'hybrid', 'battery', 'charging',
-    'horsepower', 'torque', 'performance', 'speed', 'acceleration', 'handling',
-    'safety', 'airbag', 'seatbelt', 'crash', 'collision', 'insurance',
-    'maintenance', 'repair', 'service', 'oil', 'filter', 'spark', 'plug',
-    'toyota', 'honda', 'ford', 'gm', 'chevrolet', 'nissan', 'bmw', 'mercedes',
-    'audi', 'volkswagen', 'porsche', 'ferrari', 'lamborghini', 'tesla',
-    'suv', 'sedan', 'coupe', 'hatchback', 'truck', 'pickup', 'van', 'minivan',
-    'roadster', 'convertible', 'wagon', 'crossover', 'sports car', 'luxury',
-    'racing', 'formula', 'nascar', 'drift', 'track', 'circuit', 'rally',
-    
-    # Conversational keywords
-    'hi', 'hello', 'hey', 'good morning', 'good afternoon', 'good evening',
-    'thanks', 'thank you', 'please', 'sure', 'ok', 'okay', 'yes', 'no',
-    'next', 'continue', 'more', 'again', 'repeat', 'explain', 'clarify',
-    'i dont understand', 'i didnt understand', 'confused', 'help', 'sorry',
-    'what', 'how', 'when', 'where', 'why', 'who', 'which', 'can you',
-    'tell me', 'show me', 'explain to me', 'i want', 'i need', 'i would like',
-    'exit', 'quit', 'bye', 'goodbye', 'see you', 'stop', 'end', 'finish',
-    
-    # Casual conversational words
-    'hmm', 'hm', 'uh', 'um', 'eh', 'ah', 'oh', 'wow', 'woah', 'whoa',
-    'yep', 'yup', 'nope', 'nah', 'maybe', 'perhaps', 'probably', 'definitely',
-    'absolutely', 'exactly', 'right', 'correct', 'true', 'precisely',
-    'awesome', 'cool', 'nice', 'great', 'amazing', 'fantastic', 'wonderful',
-    'interesting', 'really', 'seriously', 'actually', 'basically', 'essentially',
-    'huh', 'excuse me', 'pardon', 'come again', 'what?', 'huh?',
-    'sup', 'whats up', 'howdy', 'yo', 'hey there', 'hi there',
-    'so', 'well', 'anyway', 'actually', 'basically', 'essentially',
-    'later', 'catch you later', 'talk soon', 'peace out', 'see ya',
-    'lol', 'haha', 'funny', 'sad', 'happy', 'excited', 'good job', 'well done',
-    'let me think', 'give me a sec', 'hold on', 'wait', 'one moment',
-    'sweet', 'dope', 'sick', 'tight', 'rad', 'legit', 'bet', 'word',
-    'got it', 'makes sense', 'i see', 'fair enough', 'sounds good',
-    'no way', 'for real', 'no kidding', 'you bet', 'of course',
-    'my bad', 'no worries', 'all good', 'no problem', 'dont worry about it'
-]
-
-def is_automotive_related(text):
-    """Check if the text is related to automotive topics"""
-    text_lower = text.lower()
-    # Check for automotive keywords
-    for keyword in AUTOMOTIVE_KEYWORDS:
-        if keyword in text_lower:
-            return True
-    return False
+@app.route('/delete_document/<int:document_id>', methods=['DELETE'])
+def delete_document(document_id):
+    """Delete a document and its chunks"""
+    try:
+        document = Document.query.get_or_404(document_id)
+        
+        # Delete file
+        if os.path.exists(document.file_path):
+            os.remove(document.file_path)
+        
+        # Delete from database (chunks will be deleted due to cascade)
+        db.session.delete(document)
+        db.session.commit()
+        
+        # Refresh search index
+        get_vector_search().refresh_index()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Document "{document.original_filename}" deleted successfully'
+        })
+        
+    except Exception as e:
+        logger.error(f"Delete error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/chat', methods=['POST'])
 def chat():
-    """Handle automotive chat messages"""
+    """RAG-powered chat endpoint"""
     try:
         data = request.get_json()
         message = data.get('message', '').strip()
@@ -168,90 +155,187 @@ def chat():
         if not message:
             return jsonify({'success': False, 'error': 'Message is required'})
         
-        # Get secure session data
-        session_id = get_or_create_secure_session_id()
-        secure_data = get_secure_session_data(session_id)
-        
-        # Check if user has API key configured
-        api_key = secure_data['api_key']
-        if not api_key:
-            return jsonify({
-                'success': False, 
-                'error': 'Please configure your OpenRouter API key in Settings first'
-            })
-        
-        # Content filtering - check if message is automotive related
+        # Check if automotive-related
         if not is_automotive_related(message):
             return jsonify({
                 'success': True,
                 'response': {
-                    'content': "I'm sorry, but I can only discuss automotive topics like cars, engines, vehicle maintenance, auto manufacturers, and automotive technology. Please ask me something related to automobiles!",
-                    'filtered': True
+                    'content': "I'm an automotive expert assistant. I can only help with questions about cars, engines, maintenance, and other automotive topics. Please ask me something about vehicles!",
+                    'model': 'content_filter',
+                    'filtered': True,
+                    'context_used': False,
+                    'chunks_found': 0,
+                    'referenced_documents': []
                 }
             })
         
-        # Get model and conversation history from secure storage
-        model = secure_data['model']
+        # Get session data
+        session_id = get_or_create_secure_session_id()
+        secure_data = get_secure_session_data(session_id)
+        
+        if not secure_data['api_key']:
+            return jsonify({'success': False, 'error': 'Please configure your OpenRouter API key in settings'})
+        
+        # Initialize RAG client
+        rag_client = RAGClient(secure_data['api_key'])
+        
+        # Get conversation history
         conversation_history = secure_data['chat_history']
         
-        # Add user message to conversation history
-        conversation_history.append({
-            'role': 'user',
-            'content': message
-        })
+        # Add user message to history
+        conversation_history.append({'role': 'user', 'content': message})
         
-        # Limit conversation history to last 10 messages to avoid token limits
-        # Keep system message separate, so we track user/assistant pairs
-        if len(conversation_history) > 20:  # 20 = 10 user + 10 assistant messages
+        # Truncate conversation if too long
+        if len(conversation_history) > 20:
             conversation_history = conversation_history[-20:]
         
-        # Call OpenRouter API with conversation history
-        client = OpenRouterClient(api_key)
-        try:
-            response = client.chat_completion(model, conversation_history)
+        # Generate RAG response
+        response = rag_client.chat_with_rag(
+            message=message,
+            conversation_history=conversation_history,
+            model=secure_data['model']
+        )
+        
+        if response['success']:
+            # Add assistant response to history
+            assistant_message = response['response']['content']
+            conversation_history.append({'role': 'assistant', 'content': assistant_message})
             
-            # Add assistant response to conversation history
-            conversation_history.append({
-                'role': 'assistant',
-                'content': response['content']
-            })
-            
-            # Update secure storage with new conversation history
+            # Update session
             secure_data['chat_history'] = conversation_history
             
-            return jsonify({
-                'success': True,
-                'response': {
-                    'content': response['content'],
-                    'model': response.get('model', model),
-                    'filtered': False
-            }
-            })
-        except Exception as api_error:
-            logging.error(f"OpenRouter API timeout/error: {str(api_error)}")
+            # Store in database for persistence
+            user_chat = ChatHistory(
+                session_id=session_id,
+                role='user',
+                content=message
+            )
+            assistant_chat = ChatHistory(
+                session_id=session_id,
+                role='assistant',
+                content=assistant_message
+            )
             
-            # Remove the user message from history if API call failed
+            # Set referenced documents
+            if response['response']['referenced_documents']:
+                doc_ids = [doc['id'] for doc in response['response']['referenced_documents']]
+                assistant_chat.set_referenced_documents(doc_ids)
+            
+            db.session.add(user_chat)
+            db.session.add(assistant_chat)
+            db.session.commit()
+            
+            return jsonify(response)
+        else:
+            # Remove user message on failure
             if conversation_history and conversation_history[-1]['role'] == 'user':
                 conversation_history.pop()
-                secure_data['chat_history'] = conversation_history
+            secure_data['chat_history'] = conversation_history
             
-            return jsonify({
-                'success': True,
-                'response': {
-                    'content': "I'm sorry, but I'm having trouble connecting to the AI service right now. This might be due to high traffic or a temporary issue. Please try again in a moment!",
-                    'model': model,
-                    'filtered': False
-            }
-            })
-    
+            return jsonify(response)
+            
     except Exception as e:
-        logging.error(f"Chat error: {str(e)}")
-        return jsonify({'success': False, 'error': f'Chat failed: {str(e)}'})
+        logger.error(f"Chat error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/test_openrouter', methods=['POST'])
+def test_openrouter():
+    """Test OpenRouter API connection"""
+    try:
+        data = request.get_json()
+        api_key = data.get('api_key', '').strip()
+        model = data.get('model', 'deepseek/deepseek-chat-v3-0324:free')
+        
+        if not api_key:
+            return jsonify({'success': False, 'error': 'API key is required'})
+        
+        # Test connection
+        rag_client = RAGClient(api_key)
+        result = rag_client.test_connection(api_key, model)
+        
+        if result['success']:
+            # Store API key in session
+            session_id = get_or_create_secure_session_id()
+            secure_data = get_secure_session_data(session_id)
+            secure_data['api_key'] = api_key
+            secure_data['model'] = model
+            
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"API test error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/get_session_data', methods=['GET'])
+def get_session_data():
+    """Get session configuration data (masked)"""
+    try:
+        session_id = get_or_create_secure_session_id()
+        secure_data = get_secure_session_data(session_id)
+        
+        return jsonify({
+            'api_key': '***' if secure_data['api_key'] else '',
+            'model': secure_data['model'],
+            'has_api_key': bool(secure_data['api_key']),
+            'session_id': session_id
+        })
+        
+    except Exception as e:
+        logger.error(f"Session data error: {str(e)}")
+        return jsonify({'error': str(e)})
+
+@app.route('/clear_session', methods=['POST'])
+def clear_session():
+    """Clear all session data"""
+    try:
+        session_id = session.get('secure_session_id')
+        if session_id and session_id in secure_sessions:
+            del secure_sessions[session_id]
+        session.clear()
+        
+        return jsonify({'success': True, 'message': 'Session cleared'})
+        
+    except Exception as e:
+        logger.error(f"Clear session error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/clear_chat', methods=['POST'])
 def clear_chat():
-    """Clear chat history from secure storage"""
-    session_id = get_or_create_secure_session_id()
-    secure_data = get_secure_session_data(session_id)
-    secure_data['chat_history'] = []
-    return jsonify({'success': True, 'message': 'Chat history cleared'})
+    """Clear chat history only"""
+    try:
+        session_id = get_or_create_secure_session_id()
+        secure_data = get_secure_session_data(session_id)
+        secure_data['chat_history'] = []
+        
+        return jsonify({'success': True, 'message': 'Chat history cleared'})
+        
+    except Exception as e:
+        logger.error(f"Clear chat error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/get_stats', methods=['GET'])
+def get_stats():
+    """Get system statistics"""
+    try:
+        rag_client = RAGClient()
+        stats = rag_client.get_document_stats()
+        
+        return jsonify({
+            'success': True,
+            'stats': stats
+        })
+        
+    except Exception as e:
+        logger.error(f"Stats error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/refresh_index', methods=['POST'])
+def refresh_index():
+    """Manually refresh the search index"""
+    try:
+        get_vector_search().refresh_index()
+        return jsonify({'success': True, 'message': 'Search index refreshed'})
+        
+    except Exception as e:
+        logger.error(f"Refresh index error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)})
