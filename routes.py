@@ -81,7 +81,24 @@ AUTOMOTIVE_KEYWORDS = [
     'i dont understand', 'i didnt understand', 'confused', 'help', 'sorry',
     'what', 'how', 'when', 'where', 'why', 'who', 'which', 'can you',
     'tell me', 'show me', 'explain to me', 'i want', 'i need', 'i would like',
-    'exit', 'quit', 'bye', 'goodbye', 'see you', 'stop', 'end', 'finish'
+    'exit', 'quit', 'bye', 'goodbye', 'see you', 'stop', 'end', 'finish',
+    
+    # Casual conversational words
+    'hmm', 'hm', 'uh', 'um', 'eh', 'ah', 'oh', 'wow', 'woah', 'whoa',
+    'yep', 'yup', 'nope', 'nah', 'maybe', 'perhaps', 'probably', 'definitely',
+    'absolutely', 'exactly', 'right', 'correct', 'true', 'precisely',
+    'awesome', 'cool', 'nice', 'great', 'amazing', 'fantastic', 'wonderful',
+    'interesting', 'really', 'seriously', 'actually', 'basically', 'essentially',
+    'huh', 'excuse me', 'pardon', 'come again', 'what?', 'huh?',
+    'sup', 'whats up', 'howdy', 'yo', 'hey there', 'hi there',
+    'so', 'well', 'anyway', 'actually', 'basically', 'essentially',
+    'later', 'catch you later', 'talk soon', 'peace out', 'see ya',
+    'lol', 'haha', 'funny', 'sad', 'happy', 'excited', 'good job', 'well done',
+    'let me think', 'give me a sec', 'hold on', 'wait', 'one moment',
+    'sweet', 'dope', 'sick', 'tight', 'rad', 'legit', 'bet', 'word',
+    'got it', 'makes sense', 'i see', 'fair enough', 'sounds good',
+    'no way', 'for real', 'no kidding', 'you bet', 'of course',
+    'my bad', 'no worries', 'all good', 'no problem', 'dont worry about it'
 ]
 
 def is_automotive_related(text):
