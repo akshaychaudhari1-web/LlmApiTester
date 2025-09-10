@@ -60,6 +60,7 @@ with app.app_context():
     except Exception as e:
         logging.error(f"Database initialization failed: {e}")
         logging.error("Please check your DATABASE_URL configuration and database connectivity")
+        logging.error("Application will exit - database connection is required for proper functionality")
         sys.exit(1)
 
 if __name__ == "__main__":
