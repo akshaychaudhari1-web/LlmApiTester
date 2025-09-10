@@ -22,9 +22,9 @@ class OpenRouterClient:
         if referer_url:
             self.headers["HTTP-Referer"] = referer_url
     
-    def chat_completion(self, model, prompt, max_tokens=1000, temperature=0.7):
+    def chat_completion(self, model, conversation_history, max_tokens=1000, temperature=0.7):
         """
-        Send a chat completion request to OpenRouter with automotive system prompt
+        Send a chat completion request to OpenRouter with automotive system prompt and conversation history
         """
         try:
             url = f"{self.base_url}/chat/completions"
@@ -41,18 +41,20 @@ class OpenRouterClient:
 
 If someone asks about anything outside automotive topics, politely redirect them back to car-related discussions. Always provide helpful, accurate automotive information and maintain a friendly, knowledgeable tone."""
             
+            # Build messages array with system prompt + conversation history
+            messages = [
+                {
+                    "role": "system",
+                    "content": system_prompt
+                }
+            ]
+            
+            # Add conversation history (user/assistant message pairs)
+            messages.extend(conversation_history)
+            
             payload = {
                 "model": model,
-                "messages": [
-                    {
-                        "role": "system",
-                        "content": system_prompt
-                    },
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ],
+                "messages": messages,
                 "max_tokens": max_tokens,
                 "temperature": temperature
             }

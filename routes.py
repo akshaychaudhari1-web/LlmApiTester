@@ -28,7 +28,14 @@ def test_openrouter():
         session['openrouter_model'] = model
         
         client = OpenRouterClient(api_key)
-        response = client.chat_completion(model, prompt)
+        # For API testing, create a simple conversation history with just the test prompt
+        test_conversation = [
+            {
+                'role': 'user',
+                'content': prompt
+            }
+        ]
+        response = client.chat_completion(model, test_conversation)
         
         return jsonify({
             'success': True,
@@ -141,7 +148,24 @@ def chat():
         # Get model from session
         model = session.get('openrouter_model', 'deepseek/deepseek-chat-v3-0324:free')
         
-        # Call OpenRouter API directly with user's message
+        # Get or initialize conversation history
+        if 'chat_history' not in session:
+            session['chat_history'] = []
+        
+        conversation_history = session['chat_history']
+        
+        # Add user message to conversation history
+        conversation_history.append({
+            'role': 'user',
+            'content': message
+        })
+        
+        # Limit conversation history to last 10 messages to avoid token limits
+        # Keep system message separate, so we track user/assistant pairs
+        if len(conversation_history) > 20:  # 20 = 10 user + 10 assistant messages
+            conversation_history = conversation_history[-20:]
+        
+        # Call OpenRouter API with conversation history
         client = OpenRouterClient(api_key)
         try:
             import signal
@@ -154,8 +178,18 @@ def chat():
             signal.alarm(20)
             
             try:
-                response = client.chat_completion(model, message)
+                response = client.chat_completion(model, conversation_history)
                 signal.alarm(0)  # Cancel the alarm
+                
+                # Add assistant response to conversation history
+                conversation_history.append({
+                    'role': 'assistant',
+                    'content': response['content']
+                })
+                
+                # Update session with new conversation history
+                session['chat_history'] = conversation_history
+                session.modified = True
                 
                 return jsonify({
                     'success': True,
@@ -168,6 +202,13 @@ def chat():
             except (TimeoutError, Exception) as api_error:
                 signal.alarm(0)  # Cancel the alarm
                 logging.error(f"OpenRouter API timeout/error: {str(api_error)}")
+                
+                # Remove the user message from history if API call failed
+                if conversation_history and conversation_history[-1]['role'] == 'user':
+                    conversation_history.pop()
+                    session['chat_history'] = conversation_history
+                    session.modified = True
+                
                 return jsonify({
                     'success': True,
                     'response': {
@@ -178,6 +219,13 @@ def chat():
                 })
         except Exception as outer_error:
             logging.error(f"Chat system error: {str(outer_error)}")
+            
+            # Remove the user message from history if system error occurred
+            if conversation_history and conversation_history[-1]['role'] == 'user':
+                conversation_history.pop()
+                session['chat_history'] = conversation_history
+                session.modified = True
+                
             return jsonify({
                 'success': True,
                 'response': {
