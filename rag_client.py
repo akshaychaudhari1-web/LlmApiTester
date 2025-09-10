@@ -14,7 +14,7 @@ class RAGClient:
         self.api_key = api_key or os.environ.get('OPENROUTER_API_KEY')
         self.base_url = "https://openrouter.ai/api/v1"
         self.search_engine = VectorSearchEngine()
-        self.default_model = "deepseek/deepseek-r1:free"
+        self.default_model = "openrouter/sonoma-sky-alpha"
         
         # Automotive system prompt for RAG
         self.system_prompt = """You are an automotive expert assistant with access to technical documentation. You ONLY discuss topics related to:
