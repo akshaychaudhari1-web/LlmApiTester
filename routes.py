@@ -1,9 +1,14 @@
 import json
 import logging
+import uuid
 from flask import render_template, request, jsonify, session
 from app import app
 from openrouter_client import OpenRouterClient
 import re
+
+# Server-side storage for secure data (API keys and chat history)
+# This prevents sensitive data from being stored in client cookies
+secure_sessions = {}
 
 @app.route('/')
 def index():
@@ -11,21 +16,47 @@ def index():
     return render_template('index.html')
 
 
+def get_or_create_secure_session_id():
+    """Get or create a secure session ID for server-side storage"""
+    if 'secure_session_id' not in session:
+        session['secure_session_id'] = str(uuid.uuid4())
+    return session['secure_session_id']
+
+def get_secure_session_data(session_id):
+    """Get secure session data from server-side storage"""
+    if session_id not in secure_sessions:
+        secure_sessions[session_id] = {
+            'api_key': '',
+            'model': 'deepseek/deepseek-chat-v3-0324:free',
+            'chat_history': []
+        }
+    return secure_sessions[session_id]
+
 @app.route('/test_openrouter', methods=['POST'])
 def test_openrouter():
     """Test OpenRouter API connection"""
     try:
         data = request.get_json()
-        api_key = data.get('api_key', '')
+        api_key = data.get('api_key', '')  # Frontend can still set API key
         model = data.get('model', 'openai/gpt-3.5-turbo')
         prompt = data.get('prompt', 'Hello, world!')
         
+        # Get secure session data 
+        session_id = get_or_create_secure_session_id()
+        secure_data = get_secure_session_data(session_id)
+        
+        # Use provided API key or fallback to stored one
+        if api_key:
+            # Frontend provided new API key - store it
+            secure_data['api_key'] = api_key
+            secure_data['model'] = model
+        else:
+            # Use stored API key for testing
+            api_key = secure_data['api_key']
+            secure_data['model'] = model
+        
         if not api_key:
             return jsonify({'success': False, 'error': 'API key is required'})
-        
-        # Store API key in session
-        session['openrouter_api_key'] = api_key
-        session['openrouter_model'] = model
         
         client = OpenRouterClient(api_key)
         # For API testing, create a simple conversation history with just the test prompt
@@ -53,15 +84,25 @@ def test_openrouter():
 
 @app.route('/get_session_data', methods=['GET'])
 def get_session_data():
-    """Get stored session data"""
+    """Get stored session data (secure - no API key exposure)"""
+    session_id = get_or_create_secure_session_id()
+    secure_data = get_secure_session_data(session_id)
+    
     return jsonify({
-        'api_key': session.get('openrouter_api_key', ''),
-        'model': session.get('openrouter_model', 'deepseek/deepseek-chat-v3-0324:free')
+        'api_key': '***' if secure_data['api_key'] else '',  # Never expose actual API key
+        'model': secure_data['model'],
+        'has_api_key': bool(secure_data['api_key'])  # Just indicate if key is set
     })
 
 @app.route('/clear_session', methods=['POST'])
 def clear_session():
     """Clear all session data"""
+    # Clear server-side secure data
+    session_id = session.get('secure_session_id')
+    if session_id and session_id in secure_sessions:
+        del secure_sessions[session_id]
+    
+    # Clear client-side session
     session.clear()
     return jsonify({'success': True, 'message': 'Session data cleared'})
 
@@ -127,8 +168,12 @@ def chat():
         if not message:
             return jsonify({'success': False, 'error': 'Message is required'})
         
+        # Get secure session data
+        session_id = get_or_create_secure_session_id()
+        secure_data = get_secure_session_data(session_id)
+        
         # Check if user has API key configured
-        api_key = session.get('openrouter_api_key')
+        api_key = secure_data['api_key']
         if not api_key:
             return jsonify({
                 'success': False, 
@@ -145,14 +190,9 @@ def chat():
                 }
             })
         
-        # Get model from session
-        model = session.get('openrouter_model', 'deepseek/deepseek-chat-v3-0324:free')
-        
-        # Get or initialize conversation history
-        if 'chat_history' not in session:
-            session['chat_history'] = []
-        
-        conversation_history = session['chat_history']
+        # Get model and conversation history from secure storage
+        model = secure_data['model']
+        conversation_history = secure_data['chat_history']
         
         # Add user message to conversation history
         conversation_history.append({
@@ -168,71 +208,40 @@ def chat():
         # Call OpenRouter API with conversation history
         client = OpenRouterClient(api_key)
         try:
-            import signal
+            response = client.chat_completion(model, conversation_history)
             
-            def timeout_handler(signum, frame):
-                raise TimeoutError("API call timed out")
+            # Add assistant response to conversation history
+            conversation_history.append({
+                'role': 'assistant',
+                'content': response['content']
+            })
             
-            # Set a signal alarm for 20 seconds (shorter than worker timeout)
-            signal.signal(signal.SIGALRM, timeout_handler)
-            signal.alarm(20)
+            # Update secure storage with new conversation history
+            secure_data['chat_history'] = conversation_history
             
-            try:
-                response = client.chat_completion(model, conversation_history)
-                signal.alarm(0)  # Cancel the alarm
-                
-                # Add assistant response to conversation history
-                conversation_history.append({
-                    'role': 'assistant',
-                    'content': response['content']
-                })
-                
-                # Update session with new conversation history
-                session['chat_history'] = conversation_history
-                session.modified = True
-                
-                return jsonify({
-                    'success': True,
-                    'response': {
-                        'content': response['content'],
-                        'model': response.get('model', model),
-                        'filtered': False
-                    }
-                })
-            except (TimeoutError, Exception) as api_error:
-                signal.alarm(0)  # Cancel the alarm
-                logging.error(f"OpenRouter API timeout/error: {str(api_error)}")
-                
-                # Remove the user message from history if API call failed
-                if conversation_history and conversation_history[-1]['role'] == 'user':
-                    conversation_history.pop()
-                    session['chat_history'] = conversation_history
-                    session.modified = True
-                
-                return jsonify({
-                    'success': True,
-                    'response': {
-                        'content': "I'm sorry, but I'm having trouble connecting to the AI service right now. This might be due to high traffic or a temporary issue. Please try again in a moment!",
-                        'model': model,
-                        'filtered': False
-                    }
-                })
-        except Exception as outer_error:
-            logging.error(f"Chat system error: {str(outer_error)}")
-            
-            # Remove the user message from history if system error occurred
-            if conversation_history and conversation_history[-1]['role'] == 'user':
-                conversation_history.pop()
-                session['chat_history'] = conversation_history
-                session.modified = True
-                
             return jsonify({
                 'success': True,
                 'response': {
-                    'content': "I'm experiencing technical difficulties. Please try your question again!",
+                    'content': response['content'],
+                    'model': response.get('model', model),
+                    'filtered': False
+            }
+            })
+        except Exception as api_error:
+            logging.error(f"OpenRouter API timeout/error: {str(api_error)}")
+            
+            # Remove the user message from history if API call failed
+            if conversation_history and conversation_history[-1]['role'] == 'user':
+                conversation_history.pop()
+                secure_data['chat_history'] = conversation_history
+            
+            return jsonify({
+                'success': True,
+                'response': {
+                    'content': "I'm sorry, but I'm having trouble connecting to the AI service right now. This might be due to high traffic or a temporary issue. Please try again in a moment!",
                     'model': model,
                     'filtered': False
-                }
+            }
             })
     
     except Exception as e:
@@ -241,7 +250,8 @@ def chat():
 
 @app.route('/clear_chat', methods=['POST'])
 def clear_chat():
-    """Clear chat history from session"""
-    if 'chat_history' in session:
-        del session['chat_history']
+    """Clear chat history from secure storage"""
+    session_id = get_or_create_secure_session_id()
+    secure_data = get_secure_session_data(session_id)
+    secure_data['chat_history'] = []
     return jsonify({'success': True, 'message': 'Chat history cleared'})

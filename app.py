@@ -48,10 +48,12 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
 # initialize the app with the extension
 db.init_app(app)
 
+# Import routes to register endpoints
+import routes  # noqa: F401
+
 with app.app_context():
-    # Import models and routes
-    import models
-    import routes
+    # Import models 
+    import models  # noqa: F401
     
     # Create all tables with error handling
     try:

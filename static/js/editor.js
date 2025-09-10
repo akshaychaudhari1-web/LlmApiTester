@@ -45,11 +45,12 @@ async function loadSessionData() {
         const response = await fetch('/get_session_data');
         const data = await response.json();
         
-        currentApiKey = data.api_key || '';
+        // For security, API key is no longer returned - only indicator if it's set
+        currentApiKey = data.has_api_key ? 'set' : '';  
         currentModel = data.model || 'deepseek/deepseek-chat-v3-0324:free';
         
-        // Update UI
-        document.getElementById('apiKeyInput').value = currentApiKey;
+        // Update UI - show masked key if it exists
+        document.getElementById('apiKeyInput').value = data.has_api_key ? '••••••••••••••••' : '';
         document.getElementById('modelSelect').value = currentModel;
     } catch (error) {
         console.error('Failed to load session data:', error);
@@ -96,7 +97,6 @@ async function testOpenRouterAPI() {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                api_key: currentApiKey,
                 model: currentModel,
                 prompt: prompt
             })
@@ -153,7 +153,7 @@ async function sendChatMessage() {
         return;
     }
     
-    if (!currentApiKey) {
+    if (!currentApiKey || currentApiKey === '') {
         addChatMessage('error', 'Please configure your OpenRouter API key in Settings first');
         return;
     }
