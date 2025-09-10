@@ -195,7 +195,7 @@ async function sendChatMessage() {
         }
         
         if (result.success) {
-            addChatMessage('assistant', result.response);
+            addChatMessage('assistant', result.response.content);
         } else {
             addChatMessage('error', result.error || 'Failed to get response');
         }
