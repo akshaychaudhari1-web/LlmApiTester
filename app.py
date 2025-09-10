@@ -53,8 +53,14 @@ with app.app_context():
     import models
     import routes
     
-    # Create all tables
-    db.create_all()
+    # Create all tables with error handling
+    try:
+        db.create_all()
+        logging.info("Database tables created successfully")
+    except Exception as e:
+        logging.error(f"Database initialization failed: {e}")
+        logging.error("Please check your DATABASE_URL configuration and database connectivity")
+        sys.exit(1)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
