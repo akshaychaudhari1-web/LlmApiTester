@@ -88,7 +88,9 @@ Format your responses clearly with proper paragraphs and bullet points when help
         for i, (chunk, score) in enumerate(relevant_chunks, 1):
             # Get document info
             document = Document.query.get(chunk.document_id)
-            
+            if document is None:
+                continue
+                
             context_parts.append(
                 f"Source {i}: {document.original_filename} (Page {chunk.page_number})\n"
                 f"Content: {chunk.text_content}\n"
@@ -151,12 +153,13 @@ Format your responses clearly with proper paragraphs and bullet points when help
         for chunk, score in relevant_chunks:
             if chunk.document_id not in seen_docs:
                 document = Document.query.get(chunk.document_id)
-                doc_info.append({
-                    'id': document.id,
-                    'filename': document.original_filename,
-                    'relevance_score': score
-                })
-                seen_docs.add(chunk.document_id)
+                if document is not None:
+                    doc_info.append({
+                        'id': document.id,
+                        'filename': document.original_filename,
+                        'relevance_score': score
+                    })
+                    seen_docs.add(chunk.document_id)
         
         return doc_info
     

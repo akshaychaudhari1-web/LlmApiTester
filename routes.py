@@ -205,16 +205,15 @@ def chat():
             secure_data['chat_history'] = conversation_history
             
             # Store in database for persistence
-            user_chat = ChatHistory(
-                session_id=session_id,
-                role='user',
-                content=message
-            )
-            assistant_chat = ChatHistory(
-                session_id=session_id,
-                role='assistant',
-                content=assistant_message
-            )
+            user_chat = ChatHistory()
+            user_chat.session_id = session_id
+            user_chat.role = 'user'
+            user_chat.content = message
+            
+            assistant_chat = ChatHistory()
+            assistant_chat.session_id = session_id
+            assistant_chat.role = 'assistant'
+            assistant_chat.content = assistant_message
             
             # Set referenced documents
             if response['response']['referenced_documents']:
