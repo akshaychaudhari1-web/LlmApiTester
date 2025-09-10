@@ -7,12 +7,20 @@ class OpenRouterClient:
     def __init__(self, api_key=None):
         self.api_key = api_key or os.getenv("OPENROUTER_API_KEY")
         self.base_url = "https://openrouter.ai/api/v1"
+        # Get the current domain for production deployment
+        referer_url = os.getenv("REPLIT_DOMAIN")
+        if referer_url and not referer_url.startswith(('http://', 'https://')):
+            referer_url = f"https://{referer_url}"
+        
         self.headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
-            "HTTP-Referer": "http://localhost:5000",
-            "X-Title": "Python IDE for OpenRouter"
+            "X-Title": "OpenRouter Chat Assistant"
         }
+        
+        # Only add HTTP-Referer if we have a valid domain
+        if referer_url:
+            self.headers["HTTP-Referer"] = referer_url
     
     def chat_completion(self, model, prompt, max_tokens=1000, temperature=0.7):
         """
