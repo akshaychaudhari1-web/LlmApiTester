@@ -24,14 +24,30 @@ class OpenRouterClient:
     
     def chat_completion(self, model, prompt, max_tokens=1000, temperature=0.7):
         """
-        Send a chat completion request to OpenRouter
+        Send a chat completion request to OpenRouter with automotive system prompt
         """
         try:
             url = f"{self.base_url}/chat/completions"
             
+            # System prompt to enforce automotive topic focus
+            system_prompt = """You are an automotive expert assistant. You ONLY discuss topics related to:
+- Cars, trucks, motorcycles, and other vehicles
+- Automotive technology, engines, and mechanical systems
+- Vehicle maintenance, repair, and troubleshooting
+- Car manufacturers, models, and automotive history
+- Racing, motorsports, and automotive performance
+- Electric vehicles, hybrids, and automotive innovations
+- Vehicle safety, regulations, and automotive industry news
+
+If someone asks about anything outside automotive topics, politely redirect them back to car-related discussions. Always provide helpful, accurate automotive information and maintain a friendly, knowledgeable tone."""
+            
             payload = {
                 "model": model,
                 "messages": [
+                    {
+                        "role": "system",
+                        "content": system_prompt
+                    },
                     {
                         "role": "user",
                         "content": prompt
