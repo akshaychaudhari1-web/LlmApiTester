@@ -1,5 +1,14 @@
 /* Pilot RAG - Dark Theme Styling */
 
+/* Global Styles */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+}
+
 :root {
   --bg-primary: #1a1a1a;
   --bg-secondary: #2d2d2d;
@@ -21,12 +30,15 @@ body {
   color: var(--text-primary);
   margin: 0;
   padding: 0;
-  height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
 }
 
 .container-fluid {
-  height: calc(100vh - 56px); /* Account for navbar */
+  flex: 1 1 auto;
+  min-height: 0;
   padding: 0;
 }
 
@@ -52,6 +64,7 @@ body {
   padding: 0;
   position: relative;
   z-index: 50;
+  min-height: 0;
 }
 
 .sidebar-content {
@@ -180,13 +193,16 @@ body {
   padding: 0;
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 
 .chat-content {
-  height: 100%;
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   padding: 1rem;
+  overflow: hidden;
+  min-height: 0;
 }
 
 /* Chat Messages */
@@ -307,6 +323,7 @@ body {
   min-height: auto;
   position: relative;
   z-index: 100;
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom));
 }
 
 #message-input {
@@ -519,13 +536,14 @@ body {
 
 @media (max-width: 480px) {
   .container-fluid {
-    height: calc(100vh - 56px);
-    overflow: hidden;
+    flex: 1 1 auto;
+    min-height: 0;
   }
   
   .chat-content {
-    height: 100%;
-    max-height: calc(100vh - 56px);
+    flex: 1 1 auto;
+    overflow: hidden;
+    min-height: 0;
   }
   
   .chat-input-container {
@@ -541,6 +559,11 @@ body {
     display: block;
     margin-top: 0.25rem;
   }
+}
+
+/* Bootstrap Overrides */
+.row {
+  min-height: 0;
 }
 
 /* Utility Classes */
