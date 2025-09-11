@@ -43,7 +43,9 @@ def get_secure_session_data(session_id):
         secure_sessions[session_id] = {
             'api_key': '',
             'model': 'openrouter/sonoma-sky-alpha',
-            'chat_history': []
+            'chat_history': [],
+            'last_referenced_docs': [],  # Store last referenced document IDs
+            'last_chunks_used': []       # Store last used chunk content for ambiguous follow-ups
         }
     return secure_sessions[session_id]
 
@@ -189,11 +191,13 @@ def chat():
         if len(conversation_history) > 20:
             conversation_history = conversation_history[-20:]
         
-        # Generate RAG response
+        # Generate RAG response with document context persistence
         response = rag_client.chat_with_rag(
             message=message,
             conversation_history=conversation_history,
-            model=secure_data['model']
+            model=secure_data['model'],
+            last_referenced_docs=secure_data.get('last_referenced_docs', []),
+            last_chunks_used=secure_data.get('last_chunks_used', [])
         )
         
         if response['success']:
@@ -215,10 +219,16 @@ def chat():
             assistant_chat.role = 'assistant'
             assistant_chat.content = assistant_message
             
-            # Set referenced documents
+            # Store document context for next conversation turn
             if response['response']['referenced_documents']:
                 doc_ids = [doc['id'] for doc in response['response']['referenced_documents']]
                 assistant_chat.set_referenced_documents(doc_ids)
+                # Store for context persistence
+                secure_data['last_referenced_docs'] = doc_ids
+                
+            # Store chunk content for ambiguous follow-ups  
+            if response['response'].get('chunks_used'):
+                secure_data['last_chunks_used'] = response['response']['chunks_used']
             
             db.session.add(user_chat)
             db.session.add(assistant_chat)

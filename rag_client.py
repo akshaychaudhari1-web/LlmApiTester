@@ -39,7 +39,9 @@ When answering questions:
 Format your responses clearly with proper paragraphs and bullet points when helpful."""
     
     def chat_with_rag(self, message: str, conversation_history: Optional[List[Dict]] = None, 
-                      model: Optional[str] = None, max_chunks: int = 5) -> Dict[str, Any]:
+                      model: Optional[str] = None, max_chunks: int = 5,
+                      last_referenced_docs: Optional[List[int]] = None,
+                      last_chunks_used: Optional[List[str]] = None) -> Dict[str, Any]:
         """
         Generate response using RAG: Retrieve relevant documents then generate answer
         """
@@ -49,9 +51,14 @@ Format your responses clearly with proper paragraphs and bullet points when help
                 from routes import get_vector_search
                 self.search_engine = get_vector_search()
             
-            # Enhanced search: include context from conversation history
+            # Enhanced search with document context persistence
             search_query = self._build_enhanced_search_query(message, conversation_history)
             relevant_chunks = self.search_engine.search(search_query, top_k=max_chunks)
+            
+            # If message is ambiguous and we have previous chunks, boost with previous context
+            if self._is_ambiguous_followup(message) and last_chunks_used:
+                logger.info(f"Detected ambiguous follow-up: '{message}', including previous context")
+                relevant_chunks = self._merge_with_previous_context(relevant_chunks, last_chunks_used)
             
             # Step 2: Build context from retrieved documents
             context = self._build_context(relevant_chunks)
@@ -74,7 +81,8 @@ Format your responses clearly with proper paragraphs and bullet points when help
                     'model': model or self.default_model,
                     'context_used': bool(context),
                     'chunks_found': len(relevant_chunks),
-                    'referenced_documents': referenced_docs
+                    'referenced_documents': referenced_docs,
+                    'chunks_used': [chunk.text_content for chunk, _ in relevant_chunks[:3]]  # Store top 3 chunk contents
                 }
             }
             
@@ -285,3 +293,43 @@ Format your responses clearly with proper paragraphs and bullet points when help
             return enhanced_query
         
         return current_message
+    
+    def _is_ambiguous_followup(self, message: str) -> bool:
+        """Check if message is an ambiguous follow-up that needs previous context"""
+        message_lower = message.lower().strip()
+        
+        # Short messages or common follow-up phrases
+        ambiguous_patterns = [
+            'tell me more', 'more', 'what else', 'continue', 'go on', 'and?',
+            'explain', 'details', 'elaborate', 'expand', 'further',
+            'what about', 'how about', 'also', 'additionally'
+        ]
+        
+        # Very short messages (less than 15 chars) or matches patterns
+        is_short = len(message_lower) < 15
+        matches_pattern = any(pattern in message_lower for pattern in ambiguous_patterns)
+        
+        return is_short or matches_pattern
+    
+    def _merge_with_previous_context(self, current_chunks: List[tuple], previous_chunks: List[str]) -> List[tuple]:
+        """Merge current search results with previous context chunks"""
+        try:
+            # If we don't have enough current chunks, include previous context
+            if len(current_chunks) < 3 and previous_chunks:
+                logger.info(f"Including {len(previous_chunks)} previous chunks for context continuity")
+                
+                # Add previous chunks as pseudo-chunks (they don't have scores, so give them medium relevance)
+                for prev_chunk in previous_chunks[:2]:  # Only use top 2 from previous
+                    # Create a simple chunk-like object
+                    pseudo_chunk = type('PreviousChunk', (), {
+                        'text_content': prev_chunk,
+                        'document_id': 1,  # Use default document ID
+                        'page_number': 1
+                    })()
+                    current_chunks.append((pseudo_chunk, 0.5))  # Medium relevance score
+            
+            return current_chunks
+            
+        except Exception as e:
+            logger.error(f"Error merging with previous context: {str(e)}")
+            return current_chunks
