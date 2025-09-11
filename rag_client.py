@@ -13,7 +13,7 @@ class RAGClient:
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or os.environ.get('OPENROUTER_API_KEY')
         self.base_url = "https://openrouter.ai/api/v1"
-        self.search_engine = VectorSearchEngine()
+        self.search_engine = None  # Will be set by get_vector_search()
         self.default_model = "openrouter/sonoma-sky-alpha"
         
         # Automotive system prompt for RAG
@@ -42,7 +42,10 @@ Format your responses clearly with proper paragraphs and bullet points when help
         Generate response using RAG: Retrieve relevant documents then generate answer
         """
         try:
-            # Step 1: Retrieve relevant document chunks
+            # Step 1: Retrieve relevant document chunks  
+            if self.search_engine is None:
+                from routes import get_vector_search
+                self.search_engine = get_vector_search()
             relevant_chunks = self.search_engine.search(message, top_k=max_chunks)
             
             # Step 2: Build context from retrieved documents
@@ -218,6 +221,9 @@ Format your responses clearly with proper paragraphs and bullet points when help
     def refresh_search_index(self):
         """Refresh the document search index"""
         try:
+            if self.search_engine is None:
+                from routes import get_vector_search
+                self.search_engine = get_vector_search()
             self.search_engine.refresh_index()
             logger.info("Search index refreshed successfully")
             return True
@@ -233,10 +239,15 @@ Format your responses clearly with proper paragraphs and bullet points when help
                 Document.processed == True
             ).count()
             
+            # Get the global search engine instance
+            if self.search_engine is None:
+                from routes import get_vector_search
+                self.search_engine = get_vector_search()
+            
             return {
                 'total_documents': total_docs,
                 'total_chunks': total_chunks,
-                'search_ready': bool(self.search_engine.vectorizer)
+                'search_ready': bool(self.search_engine.vectorizer and hasattr(self.search_engine, 'chunks') and len(self.search_engine.chunks) > 0)
             }
         except Exception as e:
             logger.error(f"Error getting document stats: {str(e)}")

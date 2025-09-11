@@ -25,13 +25,12 @@ class DocumentProcessor:
             file_size = os.path.getsize(file_path)
             
             # Create document record
-            document = Document(
-                filename=filename,
-                original_filename=original_filename,
-                file_path=file_path,
-                file_size=file_size,
-                processed=False
-            )
+            document = Document()
+            document.filename = filename
+            document.original_filename = original_filename
+            document.file_path = file_path
+            document.file_size = file_size
+            document.processed = False
             db.session.add(document)
             db.session.commit()
             
@@ -52,9 +51,12 @@ class DocumentProcessor:
         except Exception as e:
             logger.error(f"Error processing PDF {original_filename}: {str(e)}")
             # Clean up on error
-            if 'document' in locals() and document.id:
-                db.session.delete(document)
-                db.session.commit()
+            if 'document' in locals() and hasattr(document, 'id') and document.id:
+                try:
+                    db.session.delete(document)
+                    db.session.commit()
+                except:
+                    pass
             raise
     
     def _extract_text_from_pdf(self, file_path: str) -> List[Tuple[int, str]]:
@@ -101,12 +103,11 @@ class DocumentProcessor:
             
             for chunk_text in chunks:
                 if len(chunk_text.strip()) > 50:  # Only store meaningful chunks
-                    chunk = DocumentChunk(
-                        document_id=document.id,
-                        chunk_index=chunk_index,
-                        page_number=page_num,
-                        text_content=chunk_text.strip()
-                    )
+                    chunk = DocumentChunk()
+                    chunk.document_id = document.id
+                    chunk.chunk_index = chunk_index
+                    chunk.page_number = page_num
+                    chunk.text_content = chunk_text.strip()
                     db.session.add(chunk)
                     chunk_index += 1
         
