@@ -14,4 +14,5 @@ dependencies = [
     "PyPDF2>=3.0.1",
     "numpy>=2.3.3",
     "scikit-learn>=1.7.2",
+    "pycryptodome>=3.23.0",
 ]
