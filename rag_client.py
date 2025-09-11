@@ -33,6 +33,8 @@ When answering questions:
 3. If the documents don't contain enough information, say so and provide general automotive knowledge
 4. Always stay focused on automotive topics
 5. If asked about non-automotive topics, politely redirect to automotive discussions
+6. IMPORTANT: When users ask follow-up questions, maintain awareness of the document context from our previous discussion and build upon it naturally
+7. For vague follow-ups like "tell me more" or "what else", expand on the document topics we were just discussing
 
 Format your responses clearly with proper paragraphs and bullet points when helpful."""
     
@@ -46,7 +48,10 @@ Format your responses clearly with proper paragraphs and bullet points when help
             if self.search_engine is None:
                 from routes import get_vector_search
                 self.search_engine = get_vector_search()
-            relevant_chunks = self.search_engine.search(message, top_k=max_chunks)
+            
+            # Enhanced search: include context from conversation history
+            search_query = self._build_enhanced_search_query(message, conversation_history)
+            relevant_chunks = self.search_engine.search(search_query, top_k=max_chunks)
             
             # Step 2: Build context from retrieved documents
             context = self._build_context(relevant_chunks)
@@ -252,3 +257,31 @@ Format your responses clearly with proper paragraphs and bullet points when help
         except Exception as e:
             logger.error(f"Error getting document stats: {str(e)}")
             return {'error': str(e)}
+    
+    def _build_enhanced_search_query(self, current_message: str, conversation_history: Optional[List[Dict]] = None) -> str:
+        """Build enhanced search query that includes context from recent conversation"""
+        if not conversation_history or len(conversation_history) < 2:
+            return current_message
+        
+        # Get recent conversation context (last 2-3 messages)
+        recent_messages = conversation_history[-4:] if len(conversation_history) >= 4 else conversation_history
+        
+        # Extract key terms from recent user messages
+        context_terms = []
+        for msg in recent_messages:
+            if msg.get('role') == 'user':
+                # Extract important words (longer than 3 chars, not common words)
+                words = msg.get('content', '').split()
+                important_words = [w.strip('.,!?') for w in words 
+                                 if len(w) > 3 and w.lower() not in ['what', 'when', 'where', 'how', 'why', 'which', 'that', 'this', 'with', 'from', 'they', 'have', 'been', 'will', 'would', 'could', 'should']]
+                context_terms.extend(important_words[:3])  # Max 3 terms per message
+        
+        # Combine current message with context terms
+        if context_terms:
+            # Remove duplicates and limit total terms
+            unique_terms = list(set(context_terms))[:5]  
+            enhanced_query = f"{current_message} {' '.join(unique_terms)}"
+            logger.info(f"Enhanced search query: {current_message} -> {enhanced_query}")
+            return enhanced_query
+        
+        return current_message
